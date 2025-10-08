@@ -1,0 +1,51 @@
+{
+  "tasks": [
+    {
+      "label": "npm: dev",
+      "type": "npm",
+      "script": "dev",
+      "problemMatcher": [],
+      "detail": "next dev",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "SSH: Connect to Supabase Server",
+      "type": "shell",
+      "command": "ssh supabase-server",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "SSH: Check Supabase Status",
+      "type": "shell",
+      "command": "ssh supabase-server 'sudo docker ps | grep supabase'",
+      "problemMatcher": []
+    },
+    {
+      "label": "SSH: Restart Supabase Docker",
+      "type": "shell",
+      "command": "ssh supabase-server 'cd /path/to/supabase && sudo docker-compose restart'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy to Server",
+      "type": "shell",
+      "command": "npm run build && rsync -avz --exclude 'node_modules' --exclude '.git' ./ supabase-server:~/organization/",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test Supabase Connection",
+      "type": "shell",
+      "command": "curl -v http://13.204.36.83:8000/auth/v1/settings",
+      "problemMatcher": []
+    }
+  ],
+  "version": "2.0.0"
+}
