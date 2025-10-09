@@ -6,36 +6,29 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "upload:profile-icons": "tsx scripts/upload-profile-icons.ts"
     },
     "dependencies": {
-        "@headlessui/react": "^2.2.9",
-        "@nextui-org/react": "^2.4.8",
-        "@radix-ui/react-label": "^2.1.0",
-        "@radix-ui/react-slot": "^1.1.0",
-        "@radix-ui/react-tabs": "^1.1.13",
-        "@supabase/supabase-js": "^2.45.4",
-        "autoprefixer": "^10.4.21",
-        "class-variance-authority": "^0.7.1",
-        "clsx": "^2.1.1",
-        "framer-motion": "^12.23.22",
-        "lucide-react": "^0.545.0",
+    "@supabase/supabase-js": "^2.74.0",
+        "dotenv": "^17.2.3",
         "next": "15.5.4",
+        "pg": "^8.16.3",
+        "pngjs": "^7.0.0",
         "react": "^18",
-        "react-dom": "^18",
-        "tailwind-merge": "^2.5.4"
+        "react-dom": "^18"
     },
     "devDependencies": {
-        "@tailwindcss/aspect-ratio": "^0.4.2",
-        "@tailwindcss/forms": "^0.5.9",
-        "@tailwindcss/typography": "^0.5.15",
         "@types/node": "^20",
+    "@types/pg": "^8.15.5",
         "@types/react": "^18",
         "@types/react-dom": "^18",
+        "autoprefixer": "^10",
         "eslint": "^8",
         "eslint-config-next": "15.5.4",
         "postcss": "^8",
-        "tailwindcss": "^3.4.1",
+        "tailwindcss": "^3",
+        "tsx": "^4.20.6",
         "typescript": "^5"
     }
 }
