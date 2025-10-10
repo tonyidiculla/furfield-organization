@@ -107,6 +107,34 @@ export default function CreateOrganizationPage() {
         fetchCurrentUserProfile()
     }, [user?.id])
 
+    // Generate organization platform ID on mount
+    useEffect(() => {
+        async function generatePlatformId() {
+            if (formData.organization_platform_id) return // Already has an ID
+            
+            try {
+                const { data: platformIdData, error: platformIdError } = await supabase
+                    .schema('master_data')
+                    .rpc('generate_organization_platform_id')
+
+                if (platformIdError) {
+                    console.error('Error generating platform ID:', platformIdError)
+                    return
+                }
+
+                setFormData(prev => ({
+                    ...prev,
+                    organization_platform_id: platformIdData
+                }))
+                console.log('Generated organization platform ID:', platformIdData)
+            } catch (err) {
+                console.error('Error generating platform ID:', err)
+            }
+        }
+        
+        generatePlatformId()
+    }, []) // Run once on mount
+
     const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target
         
@@ -115,9 +143,15 @@ export default function CreateOrganizationPage() {
             console.log('business_type changed to:', value)
         }
 
+        // Auto-prefix https:// for website field if not provided
+        let finalValue = value
+        if (name === 'website' && value && !value.match(/^https?:\/\//i)) {
+            finalValue = 'https://' + value
+        }
+
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: finalValue
         }))
 
         // Clear error when user starts typing
@@ -181,17 +215,8 @@ export default function CreateOrganizationPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         
-        // Validate all platform IDs before submission
+        // Validate platform IDs before submission (organization_platform_id is auto-generated)
         const errors: typeof platformIdErrors = {}
-        
-        if (formData.organization_platform_id) {
-            const validation = validatePlatformId(formData.organization_platform_id)
-            if (!validation.isValid) {
-                errors.organization_platform_id = validation.error
-            } else if (!isCompanyPlatformId(formData.organization_platform_id) && !isEntityPlatformId(formData.organization_platform_id)) {
-                errors.organization_platform_id = 'Organization Platform ID must be a Company (C) or Entity (E) type'
-            }
-        }
         
         if (formData.owner_platform_id) {
             const validation = validatePlatformId(formData.owner_platform_id)
@@ -224,6 +249,13 @@ export default function CreateOrganizationPage() {
 
             console.log('Current formData.business_type:', formData.business_type)
 
+            // Ensure we have an organization platform ID
+            if (!formData.organization_platform_id) {
+                setError('Organization Platform ID is required. Please refresh the page.')
+                setSaving(false)
+                return
+            }
+
             // Upload logo if provided
             let uploadedLogoPath: string | null = null
             if (logoFile) {
@@ -254,10 +286,14 @@ export default function CreateOrganizationPage() {
                 uploadedCertificatePath = filePath
             }
 
+            // Generate organization_id
+            const organizationId = crypto.randomUUID()
+
             const insertData: any = {
+                organization_id: organizationId,
                 organization_name: formData.organization_name,
                 brand_name: formData.brand_name || null,
-                organization_platform_id: formData.organization_platform_id || null,
+                organization_platform_id: formData.organization_platform_id,
                 manager_platform_id: formData.manager_platform_id || null,
                 website: formData.website || null,
                 email: formData.email || null,
@@ -365,39 +401,70 @@ export default function CreateOrganizationPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-            <div className="mx-auto max-w-4xl px-4">
-                <div className="mb-6">
+        <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-sky-50 via-white to-emerald-100 px-6 py-16">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(186,230,253,0.35),_transparent_55%),_radial-gradient(circle_at_bottom_right,_rgba(167,243,208,0.35),_transparent_45%)]" />
+
+            <div className="relative mx-auto w-full max-w-4xl">
+                <div className="mb-6 flex items-center justify-between">
+                    <h1 className="text-3xl font-bold text-slate-800">Create New Organization</h1>
                     <button
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-slate-600 hover:text-slate-900"
+                        onClick={() => router.push('/organization')}
+                        className="rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-300"
                     >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        Back
+                        ← Back
                     </button>
                 </div>
 
-                <div className="rounded-lg bg-white p-6 shadow-lg">
-                    <h1 className="mb-6 text-2xl font-bold text-slate-900">Create New Organization</h1>
+                {error && (
+                    <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-6 py-4">
+                        <p className="text-sm text-red-700">❌ {error}</p>
+                    </div>
+                )}
 
-                    {error && (
-                        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-                            <p className="text-sm text-red-800">{error}</p>
+                {success && (
+                    <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-6 py-4">
+                        <p className="text-sm text-green-700">✅ {success}</p>
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="rounded-3xl border border-white/70 bg-white/80 p-8 shadow-2xl backdrop-blur">
+                    {/* Logo Section */}
+                    <div className="mb-8">
+                        <label className="mb-2 block text-sm font-medium text-slate-700">Organization Logo</label>
+                        <div className="flex items-center gap-4">
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-sky-400 hover:bg-sky-50"
+                            >
+                                {logoUrl ? (
+                                    <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
+                                ) : (
+                                    <div className="text-center">
+                                        <svg className="mx-auto h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span className="mt-1 text-xs text-slate-500">Upload</span>
+                                    </div>
+                                )}
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                className="hidden"
+                                onChange={handleLogoUpload}
+                                disabled={uploading}
+                            />
+                            <div className="text-sm text-slate-600">
+                                <p className="font-medium">Click to upload logo</p>
+                                <p className="text-xs text-slate-500">PNG, JPG or WebP (max 2MB)</p>
+                            </div>
                         </div>
-                    )}
+                    </div>
 
-                    {success && (
-                        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
-                            <p className="text-sm text-green-800">{success}</p>
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Basic Information */}
-                        <div className="mb-6">
-                            <h2 className="mb-4 text-xl font-semibold text-slate-800">Basic Information</h2>
+                    {/* Basic Information */}
+                    <div className="mb-6">
+                        <h2 className="mb-4 text-xl font-semibold text-slate-800">Basic Information</h2>
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label htmlFor="organization_name" className="mb-2 block text-sm font-medium text-slate-700">
@@ -433,14 +500,15 @@ export default function CreateOrganizationPage() {
                                         Website
                                     </label>
                                     <input
-                                        type="url"
+                                        type="text"
                                         id="website"
                                         name="website"
                                         value={formData.website}
                                         onChange={handleInputChange}
-                                        placeholder="https://example.com"
+                                        placeholder="example.com"
                                         className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
                                     />
+                                    <p className="mt-1 text-xs text-slate-500">https:// will be added automatically</p>
                                 </div>
 
                                 <div>
@@ -467,18 +535,10 @@ export default function CreateOrganizationPage() {
                                         type="text"
                                         id="organization_platform_id"
                                         name="organization_platform_id"
-                                        value={formData.organization_platform_id}
-                                        onChange={handleInputChange}
-                                        placeholder={`e.g., ${getPlatformIdPlaceholder('C', '00')} or ${getPlatformIdPlaceholder('E', '01')}`}
-                                        className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 ${
-                                            platformIdErrors.organization_platform_id
-                                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                                : 'border-slate-300 focus:border-sky-500 focus:ring-sky-500/20'
-                                        }`}
+                                        value={formData.organization_platform_id || 'Generating...'}
+                                        readOnly
+                                        className="w-full cursor-not-allowed rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-slate-600"
                                     />
-                                    {platformIdErrors.organization_platform_id && (
-                                        <p className="mt-1 text-sm text-red-600">{platformIdErrors.organization_platform_id}</p>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -670,7 +730,6 @@ export default function CreateOrganizationPage() {
                                             <div><span className="font-medium">Email:</span> {formData.manager_email}</div>
                                             <div>
                                                 <span className="font-medium">Platform ID:</span> {formData.manager_platform_id}
-                                                <span className="ml-2 text-xs text-amber-600">🔒 Immutable</span>
                                             </div>
                                         </div>
                                         
@@ -689,10 +748,6 @@ export default function CreateOrganizationPage() {
                                                 className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
                                             />
                                         </div>
-                                        
-                                        <p className="mt-2 text-xs text-slate-500">
-                                            Note: You can change who is assigned as manager, but each user's Platform ID cannot be changed.
-                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -913,50 +968,15 @@ export default function CreateOrganizationPage() {
                                     >
                                         <option value="English">English</option>
                                     </select>
-                                    <p className="mt-1 text-xs text-slate-500">
-                                        Currently only English is supported. More languages coming soon.
-                                    </p>
+                                    {/* Language helper removed for cleaner UI */}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Logo Upload */}
+                        {/* Branding Colors */}
                         <div className="mb-6">
                             <h2 className="mb-4 text-xl font-semibold text-slate-800">Branding</h2>
-                            <div className="grid gap-4">
-                                <div>
-                                    <label htmlFor="logo" className="mb-2 block text-sm font-medium text-slate-700">
-                                        Organization Logo
-                                    </label>
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        id="logo"
-                                        accept="image/*"
-                                        onChange={handleLogoUpload}
-                                        className="hidden"
-                                    />
-                                    <div className="flex items-center gap-4">
-                                        {logoUrl && (
-                                            <img
-                                                src={logoUrl}
-                                                alt="Logo preview"
-                                                className="h-20 w-20 rounded-lg border border-slate-200 object-cover"
-                                            />
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-50"
-                                        >
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                            </svg>
-                                            {logoUrl ? 'Change Logo' : 'Upload Logo'}
-                                        </button>
-                                    </div>
-                                </div>
-
+                            <div className="space-y-4">
                                 <div className="grid gap-4 md:grid-cols-3">
                                     <div>
                                         <label htmlFor="primary_color" className="mb-2 block text-sm font-medium text-slate-700">
@@ -1069,7 +1089,6 @@ export default function CreateOrganizationPage() {
                         </div>
                     </form>
                 </div>
-            </div>
         </div>
     )
 }

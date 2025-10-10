@@ -13,11 +13,17 @@ export function OrganizationList() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [userPlatformId, setUserPlatformId] = useState<string | null>(null)
+    const [hasFetched, setHasFetched] = useState(false)
 
     useEffect(() => {
         async function fetchOrganizations() {
             if (!user?.id) {
                 setLoading(false)
+                return
+            }
+
+            // Prevent double fetching
+            if (hasFetched) {
                 return
             }
 
@@ -40,24 +46,40 @@ export function OrganizationList() {
                 setUserPlatformId(profile.user_platform_id)
                 console.log('[OrganizationList] User platform ID:', profile.user_platform_id)
 
-                // Fetch organizations owned by this user (both active and inactive)
+                // Fetch organizations - SELECT only fields needed for the list view
                 console.log('[OrganizationList] Fetching organizations...')
                 const { data: orgs, error: orgsError } = await supabase
                     .schema('master_data')
                     .from('organizations')
-                    .select('*')
+                    .select(`
+                        id,
+                        organization_id,
+                        organization_platform_id,
+                        organization_name,
+                        brand_name,
+                        email,
+                        phone,
+                        city,
+                        state,
+                        country,
+                        is_active,
+                        owner_platform_id,
+                        logo_storage,
+                        created_at,
+                        updated_at
+                    `)
                     .eq('owner_platform_id', profile.user_platform_id)
                     .is('deleted_at', null)
                     .order('created_at', { ascending: false })
 
-                console.log('[OrganizationList] Query result:', { orgs, orgsError })
+                console.log('[OrganizationList] Query result:', { count: orgs?.length || 0, error: orgsError })
 
                 if (orgsError) {
                     throw orgsError
                 }
 
-                console.log('[OrganizationList] Found organizations:', orgs?.length || 0)
                 setOrganizations(orgs || [])
+                setHasFetched(true)
             } catch (err: any) {
                 console.error('Error fetching organizations:', err)
                 setError(err.message || 'Failed to load organizations')
@@ -67,7 +89,7 @@ export function OrganizationList() {
         }
 
         fetchOrganizations()
-    }, [user?.id])
+    }, [user?.id, hasFetched])
 
     const handleEdit = (organizationId: string) => {
         router.push(`/organization/${organizationId}/edit`)
@@ -118,8 +140,8 @@ export function OrganizationList() {
         }
     }
 
-    const handleGoToEntities = (organizationId: string) => {
-        router.push(`/organization/${organizationId}/entities`)
+    const handleGoToEntities = (organizationPlatformId: string) => {
+        router.push(`/organization/${organizationPlatformId}/entities`)
     }
 
     if (loading) {
@@ -272,7 +294,7 @@ export function OrganizationList() {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-end gap-2">
                                             <button
-                                                onClick={() => handleGoToEntities(org.organization_id)}
+                                                onClick={() => handleGoToEntities(org.organization_platform_id)}
                                                 className="rounded-lg p-2 text-sky-600 transition hover:bg-sky-50"
                                                 title="Go to Entities"
                                             >

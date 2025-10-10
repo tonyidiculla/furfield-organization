@@ -87,6 +87,12 @@ export default function UserSearch({
                 return
             }
 
+            // Don't search if we already have a selected user (prevents searching for formatted display string)
+            if (selectedUser && query === `${selectedUser.full_name} (${selectedUser.user_platform_id})`) {
+                setResults([])
+                return
+            }
+
             try {
                 setLoading(true)
 
@@ -119,7 +125,7 @@ export default function UserSearch({
         }, 300) // 300ms debounce
 
         return () => clearTimeout(debounce)
-    }, [query])
+    }, [query, selectedUser])
 
     const handleSelect = (user: UserSearchResult) => {
         setSelectedUser(user)

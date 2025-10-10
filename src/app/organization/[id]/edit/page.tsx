@@ -178,11 +178,17 @@ export default function EditOrganizationPage({ params }: { params: Promise<{ id:
     }, [user?.id, organizationId])
 
     const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target
+        const { name } = e.target
+        let { value } = e.target
         
         // Debug business_type changes
         if (name === 'business_type') {
             console.log('business_type changed to:', value)
+        }
+        
+        // Auto-prefix https:// for website field if not provided
+        if (name === 'website' && value && !value.match(/^https?:\/\//i)) {
+            value = 'https://' + value
         }
         
         setFormData(prev => ({ ...prev, [name]: value }))
@@ -614,9 +620,6 @@ export default function EditOrganizationPage({ params }: { params: Promise<{ id:
                             <div>
                                 <label htmlFor="organization_platform_id" className="mb-2 block text-sm font-medium text-slate-700">
                                     Organization Platform ID
-                                    {formData.organization_platform_id && (
-                                        <span className="ml-2 text-xs text-amber-600">(Immutable)</span>
-                                    )}
                                 </label>
                                 <input
                                     type="text"
@@ -637,11 +640,6 @@ export default function EditOrganizationPage({ params }: { params: Promise<{ id:
                                 />
                                 {platformIdErrors.organization_platform_id && (
                                     <p className="mt-1 text-sm text-red-600">{platformIdErrors.organization_platform_id}</p>
-                                )}
-                                {formData.organization_platform_id && (
-                                    <p className="mt-1 text-xs text-slate-500">
-                                        Platform IDs cannot be changed once assigned
-                                    </p>
                                 )}
                             </div>
                         </div>
@@ -757,12 +755,8 @@ export default function EditOrganizationPage({ params }: { params: Promise<{ id:
                                         <div><span className="font-medium">Email:</span> {formData.owner_email}</div>
                                         <div>
                                             <span className="font-medium">Platform ID:</span> {formData.owner_platform_id}
-                                            <span className="ml-2 text-xs text-amber-600">🔒 Immutable</span>
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-xs text-slate-500">
-                                        Note: You can change who is assigned as owner, but each user's Platform ID cannot be changed.
-                                    </p>
                                 </div>
                             )}
                         </div>
@@ -840,7 +834,6 @@ export default function EditOrganizationPage({ params }: { params: Promise<{ id:
                                         <div><span className="font-medium">Email:</span> {formData.manager_email}</div>
                                         <div>
                                             <span className="font-medium">Platform ID:</span> {formData.manager_platform_id}
-                                            <span className="ml-2 text-xs text-amber-600">🔒 Immutable</span>
                                         </div>
                                     </div>
                                     
@@ -859,10 +852,6 @@ export default function EditOrganizationPage({ params }: { params: Promise<{ id:
                                             className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
                                         />
                                     </div>
-                                    
-                                    <p className="mt-2 text-xs text-slate-500">
-                                        Note: You can change who is assigned as manager, but each user's Platform ID cannot be changed.
-                                    </p>
                                 </div>
                             )}
                         </div>
@@ -919,27 +908,16 @@ export default function EditOrganizationPage({ params }: { params: Promise<{ id:
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label htmlFor="country" className="mb-2 block text-sm font-medium text-slate-700">
-                                        Country
+                                        Country <span className="text-xs text-gray-500">(Cannot be changed)</span>
                                     </label>
                                     <CountrySelector
                                         value={formData.country || ''}
-                                        onChange={async (countryCode) => {
-                                            // Auto-populate currency based on country
-                                            if (countryCode) {
-                                                const currency = await getCurrencyForCountry(countryCode)
-                                                // Update both country and currency in a single call
-                                                setFormData(prev => ({ 
-                                                    ...prev, 
-                                                    country: countryCode,
-                                                    currency: currency || prev.currency 
-                                                }))
-                                            } else {
-                                                // Just update country if no country code
-                                                setFormData(prev => ({ ...prev, country: countryCode }))
-                                            }
+                                        onChange={(countryCode) => {
+                                            // Country is locked after creation, no changes allowed
+                                            console.log('Country cannot be changed after organization creation')
                                         }}
-                                        disabled={saving}
-                                        placeholder="Select country..."
+                                        disabled={true}
+                                        placeholder="Country is locked"
                                     />
                                 </div>
 

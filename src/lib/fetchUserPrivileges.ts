@@ -43,10 +43,7 @@ export async function fetchUserPrivileges(userId: string): Promise<UserPrivilege
 
         if (assignmentsError) {
             console.error('[fetchUserPrivileges] Error fetching role assignments:', assignmentsError)
-            
-            // Fallback to RPC if direct access fails
-            console.log('Attempting RPC fallback...')
-            return await fetchUserPrivilegesViaRpc(userId)
+            return null
         }
 
         if (!assignments || assignments.length === 0) {
@@ -105,54 +102,6 @@ export async function fetchUserPrivileges(userId: string): Promise<UserPrivilege
         return result
     } catch (error) {
         console.error('Unexpected error fetching user privileges:', error)
-        return null
-    }
-}
-
-/**
- * Fallback: Fetch privileges using RPC function
- */
-async function fetchUserPrivilegesViaRpc(userId: string): Promise<UserPrivileges | null> {
-    try {
-        const { data: privilegeData, error: privilegeError } = await supabase
-            .rpc('get_user_privileges', { user_id_param: userId })
-
-        if (privilegeError) {
-            console.error('RPC fallback also failed:', privilegeError)
-            return null
-        }
-
-        if (!privilegeData || privilegeData.length === 0) {
-            return {
-                roles: [],
-                assignments: [],
-                highestPrivilegeLevel: null,
-                allPermissions: new Set(),
-                allModules: new Set(),
-            }
-        }
-
-        const roles: PlatformRole[] = privilegeData.map((item: any) => ({
-            id: item.platform_role_id,
-            role_name: item.role_name,
-            privilege_level: item.privilege_level,
-            permissions: item.permissions,
-            modules: item.modules,
-            is_active: item.is_active,
-        }))
-
-        const assignments: UserRoleAssignment[] = privilegeData.map((item: any) => ({
-            id: item.platform_role_id,
-            user_id: item.user_id,
-            platform_role_id: item.platform_role_id,
-            is_active: item.is_active,
-            created_at: item.assigned_at,
-            expires_at: item.expires_at,
-        }))
-
-        return aggregatePrivileges(roles, assignments)
-    } catch (error) {
-        console.error('RPC fallback error:', error)
         return null
     }
 }

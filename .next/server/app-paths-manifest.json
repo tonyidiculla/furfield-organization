@@ -1,3 +1,7 @@
 {
-  "/organization/[id]/edit/page": "app/organization/[id]/edit/page.js"
+  "/organization/[id]/entities/page": "app/organization/[id]/entities/page.js",
+  "/organization/page": "app/organization/page.js",
+  "/organization/[id]/edit/page": "app/organization/[id]/edit/page.js",
+  "/auth/sign-in/page": "app/auth/sign-in/page.js",
+  "/organization/[id]/entities/[entityId]/edit/page": "app/organization/[id]/entities/[entityId]/edit/page.js"
 }

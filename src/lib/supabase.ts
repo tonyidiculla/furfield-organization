@@ -21,4 +21,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         storageKey: 'supabase-auth-token',
     },
+    db: {
+        schema: 'master_data'
+    }
 })

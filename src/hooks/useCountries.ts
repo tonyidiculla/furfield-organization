@@ -108,3 +108,25 @@ export async function getCurrencyForCountry(countryCode: string): Promise<string
         return null
     }
 }
+
+/**
+ * Get language for a specific country
+ */
+export async function getLanguageForCountry(countryCode: string): Promise<string | null> {
+    try {
+        const { data, error } = await supabase
+            .schema('master_data')
+            .from('location_currency')
+            .select('language_name')
+            .eq('country_code', countryCode)
+            .eq('is_active', true)
+            .limit(1)
+            .single()
+
+        if (error) throw error
+        return data?.language_name || null
+    } catch (err) {
+        console.error('Error fetching language for country:', err)
+        return null
+    }
+}

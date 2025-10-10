@@ -143,8 +143,10 @@ export function validatePlatformId(platformId: string): PlatformIdValidation {
         }
     }
 
-    if (!/^\d+$/.test(parsed.sequentialNumber)) {
-        return { isValid: false, error: 'Sequential number must be numeric' }
+    // Platform IDs can have either numeric or alphanumeric sequential parts
+    // depending on the generation method used
+    if (!/^[A-Za-z0-9]+$/.test(parsed.sequentialNumber)) {
+        return { isValid: false, error: 'Sequential part must be alphanumeric' }
     }
 
     return { 
