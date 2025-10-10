@@ -1,9 +1,11 @@
 # Modules Table RLS Policy Fix
 
 ## Problem
+
 The `modules` table has RLS (Row Level Security) enabled but **no policies defined**, causing all SELECT queries to return 0 rows even though the table is populated with data.
 
 ## Symptoms
+
 - Console shows: `📊 ALL MODULES IN DATABASE: 0`
 - The table actually has data, but RLS blocks access
 - Other tables work (location_currency, hospitals) because they have proper RLS policies
@@ -35,6 +37,7 @@ GRANT SELECT ON master_data.modules TO authenticated;
 ## Alternative: Run Migration File
 
 If you prefer using migrations:
+
 ```bash
 # The migration file is already created:
 supabase/migrations/20250111_enable_modules_access.sql
@@ -46,6 +49,7 @@ supabase/migrations/20250111_enable_modules_access.sql
 ## Verification
 
 After applying the policy, you should see:
+
 ```
 📊 ALL MODULES IN DATABASE: 15 (or however many modules exist)
 Solution types found: ['HMS']
@@ -55,15 +59,18 @@ Active modules: 15
 ## Why This Happened
 
 When you run:
+
 ```sql
 ALTER TABLE master_data.modules ENABLE ROW LEVEL SECURITY;
 ```
 
 RLS is enabled but with **no policies**, which means:
+
 - ❌ No one can SELECT (even with GRANT SELECT permission)
 - ❌ All queries return 0 rows
 - ✅ Need to create explicit POLICY to allow access
 
 The GRANT permission alone is not enough when RLS is enabled - you need both:
+
 1. `GRANT SELECT ON table TO role` (permission layer)
 2. `CREATE POLICY` (RLS layer)

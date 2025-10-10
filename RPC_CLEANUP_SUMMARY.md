@@ -1,27 +1,32 @@
 # RPC Cleanup Summary
+
 **Date: October 10, 2025**
 **Status: ✅ COMPLETE**
 
 ## Changes Made
 
 ### Files Deleted (3):
+
 1. ✅ `src/lib/privilegeRpc.ts` - Unused RPC wrapper functions
 2. ✅ `supabase/migrations/expose_master_data_via_rpc.sql` - Unused RPC migration
 3. ✅ `src/lib/fetchUserPrivileges.ts` - Removed RPC fallback function (48 lines deleted)
 
 ### Code Modified:
+
 - **File**: `src/lib/fetchUserPrivileges.ts`
   - Removed `fetchUserPrivilegesViaRpc()` function
   - Simplified error handling (removed RPC fallback)
   - Now only uses direct schema queries
 
 ### Remaining RPC Calls (2) - KEPT:
+
 1. ✅ `generate_entity_platform_id()` - Used in entity creation
 2. ✅ `generate_organization_platform_id()` - Used in organization creation
 
 ## Before vs After
 
 ### Before:
+
 ```typescript
 // fetchUserPrivileges.ts had:
 - Primary: Direct schema queries
@@ -34,6 +39,7 @@
 ```
 
 ### After:
+
 ```typescript
 // fetchUserPrivileges.ts now:
 - Only: Direct schema queries
@@ -47,6 +53,7 @@
 ## Architecture Simplified
 
 ### Old Flow:
+
 ```
 fetchUserPrivileges()
   ↓
@@ -60,6 +67,7 @@ fetchUserPrivileges()
 ```
 
 ### New Flow:
+
 ```
 fetchUserPrivileges()
   ↓
@@ -79,11 +87,14 @@ fetchUserPrivileges()
 ## Database Functions
 
 ### Active (2):
+
 - `master_data.generate_entity_platform_id()`
 - `master_data.generate_organization_platform_id()`
 
 ### No Longer Referenced (8):
+
 These functions were never in the database anyway:
+
 - `get_user_privileges()`
 - `get_platform_role()`
 - `list_platform_roles()`
@@ -114,6 +125,7 @@ grep -r "privilegeRpc" src/
 **Status**: ✅ **ALL UNUSED RPC CODE REMOVED**
 
 Your codebase now uses:
+
 - ✅ Direct schema queries for privileges (via GRANT permissions)
 - ✅ RPC functions only for platform ID generation
 - ✅ Simple, maintainable code path

@@ -16,7 +16,7 @@ Compare with working table:
 
 ```
 master_data.location_currency table:
-✅ RLS Enabled: Yes  
+✅ RLS Enabled: Yes
 ✅ GRANT SELECT: Yes (from 20250109_grant_all_master_data_permissions.sql)
 → This is why location_currency works!
 ```
@@ -45,6 +45,7 @@ GRANT USAGE ON SCHEMA master_data TO anon;
 ## Files Ready to Execute:
 
 Choose one of these files to run:
+
 - ✅ `supabase/cleanup_modules_access.sql` (includes cleanup + grants)
 - ✅ `supabase/migrations/20250111_disable_rls_modules.sql` (grants only)
 
@@ -53,16 +54,18 @@ Both will fix the issue.
 ## Why This Happens:
 
 Your code is correct:
+
 ```typescript
 const { data, error } = await supabase
-  .schema('master_data')
-  .from('modules')
-  .select('...')
-  .ilike('solution_type', '%hms%')
-  .eq('is_active', true)
+  .schema("master_data")
+  .from("modules")
+  .select("...")
+  .ilike("solution_type", "%hms%")
+  .eq("is_active", true);
 ```
 
 But the database returns:
+
 ```
 Error Code: 42501
 Message: permission denied for table modules
@@ -73,6 +76,7 @@ Because authenticated users don't have SELECT permission on the table.
 ## After Running SQL:
 
 You should see in console:
+
 ```
 ✅ Fetched modules count: 15
 ✅ Fetched modules: [{ id: 1, module_name: 'OPD', ... }, ...]
@@ -81,6 +85,7 @@ You should see in console:
 ## Pattern:
 
 All `master_data` reference tables should have:
+
 1. ✅ RLS enabled
 2. ✅ GRANT SELECT to authenticated and anon
 3. ✅ Direct queries using `.schema('master_data').from(table)`

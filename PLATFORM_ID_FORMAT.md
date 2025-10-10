@@ -3,21 +3,23 @@
 ## ✅ CORRECT FORMAT
 
 All platform IDs in the system follow this pattern:
+
 - **Fixed 3-character prefix** (identifies entity type)
 - **6 random alphanumeric characters** (A-Z, a-z, 0-9)
 
 ### Entity Types:
 
-| Entity | Prefix | Format | Example |
-|--------|--------|--------|---------|
-| **Organization** | `C00` | `C00` + 6 random chars | `C00a7Yk2p` |
-| **Hospital Entity** | `E01` | `E01` + 6 random chars | `E01x3Bm9k` |
+| Entity              | Prefix | Format                 | Example     |
+| ------------------- | ------ | ---------------------- | ----------- |
+| **Organization**    | `C00`  | `C00` + 6 random chars | `C00a7Yk2p` |
+| **Hospital Entity** | `E01`  | `E01` + 6 random chars | `E01x3Bm9k` |
 
 ## Implementation
 
 ### Database Functions (RPC)
 
 Both functions use the same logic:
+
 1. Generate 6 random alphanumeric characters
 2. Prepend the fixed prefix (C00 or E01)
 3. Check uniqueness in the respective table
@@ -35,6 +37,7 @@ Both functions use the same logic:
 5. ✅ **Performance**: Single database call vs multiple queries
 
 **Cannot be done with direct queries** because:
+
 - ❌ Client-side random generation has race conditions
 - ❌ Would need multiple queries (generate → check → retry)
 - ❌ Not atomic - another user could insert between check and create
@@ -44,25 +47,27 @@ Both functions use the same logic:
 ```typescript
 // Organization Platform ID
 const { data: orgId } = await supabase
-  .schema('master_data')
-  .rpc('generate_organization_platform_id')
+  .schema("master_data")
+  .rpc("generate_organization_platform_id");
 // Returns: C00a7Yk2p
 
 // Hospital Entity Platform ID
 const { data: entityId } = await supabase
-  .schema('master_data')
-  .rpc('generate_entity_platform_id')
+  .schema("master_data")
+  .rpc("generate_entity_platform_id");
 // Returns: E01x3Bm9k
 ```
 
 ## Migration Files
 
 ✅ **ACTIVE:**
+
 - `20250110_create_generate_organization_platform_id_function.sql` - C00 format
 - `20250110_create_generate_entity_platform_id_function.sql` - E01 format
 
 ❌ **DELETED** (were incorrect sequential format):
-- `20250111_fix_organization_platform_id_sequential.sql` 
+
+- `20250111_fix_organization_platform_id_sequential.sql`
 - `20250111_fix_entity_platform_id_sequential.sql`
 
 ## Characteristics
@@ -76,12 +81,14 @@ const { data: entityId } = await supabase
 ## Future Entity Types
 
 When adding new entity types, follow the same pattern:
+
 - Choose a unique 3-character prefix (e.g., `P02` for Pharmacies)
 - Generate 6 random alphanumeric characters
 - Create similar RPC function
 - Check uniqueness in the relevant table
 
 Example for future Pharmacy entities:
+
 ```sql
 CREATE OR REPLACE FUNCTION master_data.generate_pharmacy_platform_id()
 RETURNS TEXT AS $$

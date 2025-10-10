@@ -1,7 +1,9 @@
 # Obsolete and Redundant Functions Analysis
+
 **Date: October 10, 2025**
 
 ## Summary
+
 Found **MULTIPLE REDUNDANT MIGRATIONS** that repeatedly redefine the same functions with slight variations.
 
 ---
@@ -11,7 +13,7 @@ Found **MULTIPLE REDUNDANT MIGRATIONS** that repeatedly redefine the same functi
 These 4 files all define the SAME function `generate_entity_platform_id()`:
 
 1. ✅ **20250110_create_generate_entity_platform_id_function.sql** - ORIGINAL (random 8 chars: E + 8 random)
-2. ⚠️ **20250111_update_entity_platform_id_format.sql** - MODIFIED (E01 + 6 random) 
+2. ⚠️ **20250111_update_entity_platform_id_format.sql** - MODIFIED (E01 + 6 random)
 3. ⚠️ **20250111_update_entity_platform_id_no_hyphens.sql** - MODIFIED (E01 + 6 random, no hyphens)
 4. ✅ **20250111_fix_entity_platform_id_sequential.sql** - FINAL (E + sequential number: E01, E02, E03)
 
@@ -35,10 +37,12 @@ These 4 files all define the SAME function `generate_entity_platform_id()`:
 ### ✅ KEEP - ACTIVE FUNCTIONS
 
 #### Platform ID Generation:
+
 - `master_data.generate_entity_platform_id()` - Used in entity creation
 - `master_data.generate_organization_platform_id()` - Used in organization creation
 
 #### Role & Privilege Management:
+
 - `public.get_user_privileges(user_id_param UUID)` - Used in UserContext
 - `public.get_platform_role(role_id_param UUID)` - Get role details
 - `public.list_platform_roles()` - List all roles
@@ -46,6 +50,7 @@ These 4 files all define the SAME function `generate_entity_platform_id()`:
 - `public.revoke_role_from_user()` - Remove roles
 
 #### Privilege Checks:
+
 - `public.user_has_privilege_level()` - Check privilege level
 - `public.user_has_permission()` - Check specific permission
 - `public.user_has_module()` - Check module access
@@ -60,6 +65,7 @@ These 4 files all define the SAME function `generate_entity_platform_id()`:
 ## Redundant Migration Files to DELETE
 
 ### Entity Platform ID (DELETE 2 intermediate versions):
+
 ```bash
 rm /Users/tonyidiculla/Developer/organization/supabase/migrations/20250111_update_entity_platform_id_format.sql
 rm /Users/tonyidiculla/Developer/organization/supabase/migrations/20250111_update_entity_platform_id_no_hyphens.sql
@@ -77,7 +83,7 @@ The final version (`20250111_fix_entity_platform_id_sequential.sql`) is the only
 DROP FUNCTION IF EXISTS public.get_hms_modules();
 
 -- Verify correct functions exist
-SELECT 
+SELECT
     routine_schema,
     routine_name,
     routine_type
@@ -93,6 +99,7 @@ ORDER BY routine_schema, routine_name;
 ### Why Multiple Versions Exist:
 
 **Entity Platform ID Evolution:**
+
 1. **Oct 10**: Created with random format (E + 8 random chars)
 2. **Oct 11**: Changed to typed format (E01 + 6 random) - with hyphens
 3. **Oct 11**: Removed hyphens (E01 + 6 random)
@@ -107,20 +114,25 @@ ORDER BY routine_schema, routine_name;
 ## Recommended Actions
 
 ### 1. Delete Redundant Migration Files (2 files):
+
 ```bash
 rm supabase/migrations/20250111_update_entity_platform_id_format.sql
 rm supabase/migrations/20250111_update_entity_platform_id_no_hyphens.sql
 ```
 
 ### 2. Ensure Database is Clean:
+
 Run the cleanup SQL above to remove `get_hms_modules()` if it exists.
 
 ### 3. Final Migration Files for Platform ID:
+
 **Entity:**
+
 - `20250110_create_generate_entity_platform_id_function.sql` (initial)
 - `20250111_fix_entity_platform_id_sequential.sql` (final - DROP + CREATE with sequential logic)
 
 **Organization:**
+
 - `20250110_create_generate_organization_platform_id_function.sql` (initial)
 - `20250111_fix_organization_platform_id_sequential.sql` (final - DROP + CREATE with sequential logic)
 
@@ -129,10 +141,12 @@ Run the cleanup SQL above to remove `get_hms_modules()` if it exists.
 ## Summary
 
 **Files to Delete**: 2
+
 - 20250111_update_entity_platform_id_format.sql
 - 20250111_update_entity_platform_id_no_hyphens.sql
 
 **Functions to Verify Deleted from DB**: 1
+
 - public.get_hms_modules()
 
 **Active Functions**: 11 (all necessary and in use)

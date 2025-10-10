@@ -1,12 +1,15 @@
 # Modules Not Loading - Root Cause & Solution
 
 ## Problem
+
 The hospital creation form shows "Loading modules..." but no modules appear in the checkbox list.
 
 ## Root Cause
-**The `master_data.modules` table is empty** (0 rows). 
+
+**The `master_data.modules` table is empty** (0 rows).
 
 This is confirmed by the console output:
+
 ```
 📊 ALL MODULES IN DATABASE: 0
 ⚠️ No modules found in master_data.modules table at all!
@@ -17,20 +20,23 @@ The query `.ilike('solution_type', '%hms%').eq('is_active', true)` is working co
 ## Solution
 
 ### Step 1: Insert HMS Modules
+
 Run the SQL script to populate the modules table:
 
 **File:** `supabase/insert_hms_modules.sql`
 
 Execute in Supabase SQL Editor:
+
 1. Go to https://supabase.com/dashboard/project/xnetjsifkhtbbpadwlxy/sql
-2. Open `supabase/insert_hms_modules.sql` 
+2. Open `supabase/insert_hms_modules.sql`
 3. Copy the entire contents
 4. Paste into SQL Editor
 5. Click "Run" or press Cmd+Enter
 
 This will insert **15 HMS modules**:
+
 - OPD (Out-Patient Department)
-- IPD (In-Patient Department)  
+- IPD (In-Patient Department)
 - PHARMACY (Pharmacy Management)
 - LABORATORY (Laboratory Information System)
 - RADIOLOGY (Radiology & Imaging)
@@ -46,11 +52,13 @@ This will insert **15 HMS modules**:
 - QUEUE (Queue Management)
 
 ### Step 2: Verify Modules Appear
+
 1. Refresh the hospital creation form in your browser
 2. The "Select Modules" section should now display checkboxes for all 15 modules
 3. Console should show: `📊 ALL MODULES IN DATABASE: 15`
 
 ### Step 3: Test Module Selection
+
 1. Check some modules (e.g., OPD, IPD, PHARMACY)
 2. Verify the pricing table calculates correctly based on location currency multipliers
 3. Complete the form to ensure modules save to `hospitals.subscribed_modules` column
@@ -63,11 +71,14 @@ This will insert **15 HMS modules**:
 4. ❌ Simply no data in the table to return
 
 ## Files Modified
+
 - ✅ `supabase/insert_hms_modules.sql` - SQL to populate modules table
 - ✅ `src/app/organization/[id]/entities/create/page.tsx` - Enhanced with debug logging (can clean up later)
 
 ## Next Steps After Data Insert
+
 Once modules are loaded, complete the remaining todo items:
+
 - [ ] Save selected modules to database (hospitals.subscribed_modules JSONB)
 - [ ] Add phone number validation
 - [ ] Add Manager section to edit form

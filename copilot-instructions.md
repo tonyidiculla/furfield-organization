@@ -7,6 +7,7 @@
 All platform IDs in this system follow a strict sequential format:
 
 ### Organizations
+
 - **Format**: `O` + 2-digit sequential number
 - **Examples**: O01, O02, O03, ..., O10, O11, ..., O99
 - **Table**: `master_data.organizations`
@@ -15,6 +16,7 @@ All platform IDs in this system follow a strict sequential format:
 - **Note**: Sequential numbering for organizations (different from entity random pattern)
 
 ### Entities (Hospitals)
+
 - **Format**: `E01` + 6 random alphanumeric characters (9 continuous characters, no hyphens)
 - **Structure**: E (Entity) + 01 (Hospital type) + XXXXXX (random)
 - **Examples**: E01aB3xY9, E01Zk7mN2, E019QpXw4, E01YxOKdV
@@ -25,6 +27,7 @@ All platform IDs in this system follow a strict sequential format:
 - **Note**: The "01" allows for future entity types (02 for clinics, 03 for labs, etc.)
 
 ### Users/Profiles
+
 - **Format**: `U` + 2-digit sequential number
 - **Examples**: U01, U02, U03, ..., U10, U11, ..., U99
 - **Table**: `master_data.profiles`
@@ -34,6 +37,7 @@ All platform IDs in this system follow a strict sequential format:
 ## Form UI Standards
 
 ### Logo Upload Section
+
 - **Always use**: "Click to upload logo" text (NOT a button)
 - **Structure**:
   ```tsx
@@ -51,11 +55,12 @@ All platform IDs in this system follow a strict sequential format:
 - Reference: `/src/app/organization/create/page.tsx` lines 437-465
 
 ### Currency and Language Fields
+
 - **Location**: Always in the "Location Information" section with address fields
 - **Behavior**: Auto-populate when country is selected
 - **Integration**: Use `location_currency` table lookup
 - **Order**: Country → Currency → Language
-- **Components**: 
+- **Components**:
   - CountrySelector (from `@/components/ui/country-selector`)
   - CurrencySelector (from `@/components/ui/currency-selector`)
 - **Auto-fill logic**:
@@ -72,6 +77,7 @@ All platform IDs in this system follow a strict sequential format:
 ## Database Tables
 
 ### location_currency
+
 - **Schema**: `master_data.location_currency`
 - **Key columns**:
   - `country_code` (VARCHAR, primary key part)
@@ -84,16 +90,19 @@ All platform IDs in this system follow a strict sequential format:
 ## Storage Buckets
 
 ### Organization Logos
+
 - **Bucket**: `organization-logos`
 - **Public**: false
 - **File naming**: `{timestamp}_{random}.{ext}`
 
 ### Hospital/Entity Logos
+
 - **Bucket**: `hospital-logos`
 - **Public**: false
 - **File naming**: `{timestamp}_{random}.{ext}`
 
 ### Entity Licenses
+
 - **Bucket**: `entity-licenses`
 - **Public**: false
 - **File naming**: `{timestamp}_{random}.{ext}`
@@ -108,10 +117,12 @@ All platform IDs in this system follow a strict sequential format:
 6. **All forms** (create/edit) should have identical field layouts and sections
 
 ## Phone Number Validation
+
 - **Format**: Country code + number (e.g., +1234567890)
 - **Implementation**: TODO - Add validation in future updates
 
 ## Testing Checklist
+
 - [ ] Platform ID generates sequentially (O01, E01, etc.)
 - [ ] Logo upload shows "Click to upload logo" text
 - [ ] Currency and language in Location section
