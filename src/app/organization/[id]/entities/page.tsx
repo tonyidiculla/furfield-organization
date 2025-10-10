@@ -36,6 +36,12 @@ export default function OrganizationEntitiesPage() {
     const [entities, setEntities] = useState<Entity[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    
+    // Delete modal state
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [entityToDelete, setEntityToDelete] = useState<Entity | null>(null)
+    const [deleteConfirmText, setDeleteConfirmText] = useState('')
+    const [isDeleting, setIsDeleting] = useState(false)
 
     useEffect(() => {
         async function fetchData() {
@@ -142,6 +148,59 @@ export default function OrganizationEntitiesPage() {
             console.error('Error toggling entity status:', err)
             setError(err instanceof Error ? err.message : 'Failed to update entity status')
         }
+    }
+
+    const handleDeleteClick = (entity: Entity) => {
+        setEntityToDelete(entity)
+        setDeleteConfirmText('')
+        setShowDeleteModal(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!entityToDelete || deleteConfirmText !== 'delete this entity') {
+            return
+        }
+
+        try {
+            setIsDeleting(true)
+            
+            // Soft delete by setting deleted_at timestamp
+            const { error: deleteError } = await supabase
+                .schema('master_data')
+                .from('hospitals')
+                .update({ 
+                    deleted_at: new Date().toISOString(),
+                    is_active: false
+                })
+                .eq('entity_platform_id', entityToDelete.entity_platform_id)
+
+            if (deleteError) {
+                throw deleteError
+            }
+
+            // Remove from local state
+            setEntities(prev => 
+                prev.filter(entity => entity.entity_platform_id !== entityToDelete.entity_platform_id)
+            )
+
+            // Close modal
+            setShowDeleteModal(false)
+            setEntityToDelete(null)
+            setDeleteConfirmText('')
+            
+            console.log('✅ Entity deleted successfully')
+        } catch (err) {
+            console.error('❌ Error deleting entity:', err)
+            setError(err instanceof Error ? err.message : 'Failed to delete entity')
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    const handleDeleteCancel = () => {
+        setShowDeleteModal(false)
+        setEntityToDelete(null)
+        setDeleteConfirmText('')
     }
 
     if (loading) {
@@ -323,11 +382,32 @@ export default function OrganizationEntitiesPage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center justify-end gap-2">
                                                         <button
+                                                            onClick={() => router.push(`/organization/${organizationPlatformId}/entities/${entity.entity_platform_id}/hms`)}
+                                                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 flex items-center gap-1"
+                                                            title="Launch HMS"
+                                                        >
+                                                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                            </svg>
+                                                            HMS
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleEdit(entity.entity_platform_id)}
-                                                            className="rounded-lg bg-slate-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-600"
+                                                            className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100"
                                                             title="Edit Entity"
                                                         >
-                                                            Edit
+                                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteClick(entity)}
+                                                            className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"
+                                                            title="Delete Entity"
+                                                        >
+                                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
                                                         </button>
                                                     </div>
                                                 </td>
@@ -340,6 +420,70 @@ export default function OrganizationEntitiesPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && entityToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+                        {/* Header */}
+                        <div className="mb-4 flex items-start gap-3">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-gray-900">Delete Entity</h3>
+                                <p className="mt-1 text-sm text-gray-600">
+                                    This action cannot be undone. This will permanently delete the entity.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Entity Info */}
+                        <div className="mb-4 rounded-lg bg-gray-50 p-3">
+                            <p className="text-sm font-semibold text-gray-900">
+                                {entityToDelete.entity_name || 'Unnamed Hospital'}
+                            </p>
+                            <p className="text-xs text-gray-600">{entityToDelete.entity_platform_id}</p>
+                        </div>
+
+                        {/* Confirmation Input */}
+                        <div className="mb-6">
+                            <label htmlFor="confirmDelete" className="block text-sm font-medium text-gray-700 mb-2">
+                                Please type <span className="font-bold text-red-600">delete this entity</span> to confirm
+                            </label>
+                            <input
+                                id="confirmDelete"
+                                type="text"
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                placeholder="delete this entity"
+                                autoComplete="off"
+                            />
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleDeleteCancel}
+                                disabled={isDeleting}
+                                className="flex-1 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-200 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteConfirm}
+                                disabled={deleteConfirmText !== 'delete this entity' || isDeleting}
+                                className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Entity'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -59,6 +59,36 @@ export default function EditEntityPage() {
     const organizationPlatformId = params.id as string
     const entityPlatformId = params.entityId as string
 
+    // Available service options
+    const SERVICE_OPTIONS = [
+        { value: 'preventive_care', label: 'Preventive care & wellness exams' },
+        { value: 'vaccinations', label: 'Vaccinations & deworming' },
+        { value: 'general_medicine', label: 'General medicine & consultations' },
+        { value: 'routine_surgery', label: 'Routine surgery (spay/neuter)' },
+        { value: 'advanced_specialty', label: 'Advanced specialty surgery' },
+        { value: 'complex_surgery', label: 'Complex/critical surgery' },
+        { value: 'emergency_24_7', label: '24/7 emergency care' },
+        { value: 'intensive_care', label: 'Intensive care & hospitalization' },
+        { value: 'diagnostic_imaging', label: 'Diagnostic imaging (X-ray, ultrasound, CT, MRI)' },
+        { value: 'laboratory', label: 'Laboratory & diagnostic tests' },
+        { value: 'dentistry', label: 'Dentistry & oral care' },
+        { value: 'pharmacy', label: 'Pharmacy & medication dispensing' },
+        { value: 'physiotherapy', label: 'Physiotherapy & rehabilitation' },
+        { value: 'telemedicine', label: 'Telemedicine & remote consultations' },
+        { value: 'boarding', label: 'Boarding & kennel facilities' },
+        { value: 'grooming', label: 'Grooming & pet care' },
+        { value: 'nutrition', label: 'Nutrition counseling' },
+        { value: 'reproductive', label: 'Reproductive & breeding services' },
+        { value: 'behavior', label: 'Behavior & training consultation' },
+        { value: 'mobile_field', label: 'Mobile or field services' },
+        { value: 'ambulance', label: 'Ambulance services' },
+        { value: 'pet_identification', label: 'Pet identification (microchipping)' },
+        { value: 'public_health', label: 'Public health (rabies control, disease surveillance)' },
+        { value: 'subsidized_care', label: 'Subsidized or charitable care' },
+        { value: 'teaching', label: 'Teaching & training for vet students' },
+        { value: 'clinical_research', label: 'Clinical research & trials' }
+    ]
+
     const [organization, setOrganization] = useState<Organization | null>(null)
     const [entity, setEntity] = useState<Entity | null>(null)
     const [loading, setLoading] = useState(false)
@@ -112,6 +142,7 @@ export default function EditEntityPage() {
     const [accreditationDetails, setAccreditationDetails] = useState('')
     const [operatingLicenses, setOperatingLicenses] = useState('')
     const [services, setServices] = useState('')
+    const [selectedServices, setSelectedServices] = useState<string[]>([])
     
     // Modules
     const [availableModules, setAvailableModules] = useState<any[]>([])
@@ -155,7 +186,12 @@ export default function EditEntityPage() {
 
                 // Populate form fields - Basic Information
                 setEntityName(entityData.entity_name || '')
-                setHospitalType(entityData.hospital_type || '')
+                // hospital_type is stored as an array, get the first value
+                setHospitalType(
+                    Array.isArray(entityData.hospital_type) && entityData.hospital_type.length > 0
+                        ? entityData.hospital_type[0]
+                        : ''
+                )
                 setCurrency(entityData.currency || 'USD')
                 setLanguage(entityData.language || 'ENGLISH')
                 setLogoUrl(entityData.logo_url)
@@ -196,6 +232,23 @@ export default function EditEntityPage() {
                 )
                 setServices(entityData.services ? JSON.stringify(entityData.services, null, 2) : '')
                 
+                // Initialize selected services from services array
+                if (entityData.services && Array.isArray(entityData.services)) {
+                    setSelectedServices(entityData.services)
+                } else {
+                    setSelectedServices([])
+                }
+                
+                // Initialize selected modules from subscribed_modules
+                if (entityData.subscribed_modules && Array.isArray(entityData.subscribed_modules)) {
+                    console.log('📦 Subscribed modules from DB:', entityData.subscribed_modules)
+                    const subscribedModuleIds = entityData.subscribed_modules.map((m: any) => m.module_id)
+                    console.log('📋 Extracted module IDs:', subscribedModuleIds)
+                    setSelectedModules(subscribedModuleIds)
+                } else {
+                    console.log('⚠️ No subscribed_modules found in entity data')
+                }
+                
                 setIsActive(entityData.is_active)
             } catch (err) {
                 console.error('Error fetching data:', err)
@@ -226,6 +279,7 @@ export default function EditEntityPage() {
                 }
                 
                 if (data) {
+                    console.log('🔍 Available modules:', data.map(m => ({ id: m.id, name: m.module_name })))
                     setAvailableModules(data)
                 }
             } catch (err) {
@@ -468,14 +522,8 @@ export default function EditEntityPage() {
                 ? operatingLicenses.trim().split(',').map(s => s.trim()).filter(Boolean)
                 : []
             
-            let servicesObject = null
-            if (services && services.trim()) {
-                try {
-                    servicesObject = JSON.parse(services)
-                } catch (e) {
-                    console.error('Invalid JSON for services:', e)
-                }
-            }
+            // Use selectedServices array instead of parsing JSON
+            const servicesArray = selectedServices.length > 0 ? selectedServices : null
 
             // Calculate subscription details
             const selectedModulesData = availableModules.filter(m => selectedModules.includes(m.id))
@@ -496,9 +544,12 @@ export default function EditEntityPage() {
                 return endDate.toISOString()
             })()
 
-            // Calculate remaining months for pro-rating new modules
+            // Check if subscription is still active
             const now = new Date()
             const endDate = new Date(subscriptionEndDate)
+            const isSubscriptionActive = endDate > now
+
+            // Calculate remaining months for pro-rating new modules
             const remainingMonths = Math.max(0, 
                 (endDate.getFullYear() - now.getFullYear()) * 12 + 
                 (endDate.getMonth() - now.getMonth()) +
@@ -509,39 +560,56 @@ export default function EditEntityPage() {
             // Track pro-rated charges for new modules
             let additionalProRatedCost = 0
 
-            // Prepare subscribed_modules array - preserve existing subscription dates, add new modules
-            const subscribedModulesArray = selectedModulesData.map(module => {
-                const existing = existingModuleMap.get(module.id)
-                const fullYearPrice = calculateCustomerPrice(parseFloat(module.base_price))
-                
-                if (existing) {
-                    // Module already subscribed - keep original subscribed_at date but update prices
-                    return {
-                        ...existing,
-                        base_price: parseFloat(module.base_price),
-                        customer_price: fullYearPrice,
-                        payment_frequency: module.payment_frequency,
-                        module_display_name: module.module_display_name, // Update in case it changed
-                        updated_at: new Date().toISOString()
+            // Build the final subscribed_modules array
+            const subscribedModulesArray: any[] = []
+            
+            // Step 1: Keep ALL existing modules if subscription is still active
+            if (isSubscriptionActive) {
+                for (const existingModule of existingModules) {
+                    const moduleId = existingModule.module_id
+                    const availableModule = availableModules.find(m => m.id === moduleId)
+                    
+                    if (availableModule) {
+                        // Module still exists in available modules - update prices
+                        const fullYearPrice = calculateCustomerPrice(parseFloat(availableModule.base_price))
+                        subscribedModulesArray.push({
+                            ...existingModule,
+                            base_price: parseFloat(availableModule.base_price),
+                            customer_price: fullYearPrice,
+                            payment_frequency: availableModule.payment_frequency,
+                            module_display_name: availableModule.module_display_name,
+                            updated_at: new Date().toISOString()
+                        })
+                    } else {
+                        // Module no longer available but keep it (might be deprecated)
+                        subscribedModulesArray.push(existingModule)
                     }
-                } else {
+                }
+            }
+
+            // Step 2: Add newly selected modules (not already in existing)
+            for (const module of selectedModulesData) {
+                const existing = existingModuleMap.get(module.id)
+                
+                if (!existing) {
                     // New module subscription - calculate pro-rated cost
+                    const fullYearPrice = calculateCustomerPrice(parseFloat(module.base_price))
                     const proRatedPrice = fullYearPrice * proRateMultiplier
                     additionalProRatedCost += proRatedPrice
 
-                    return {
+                    subscribedModulesArray.push({
                         module_id: module.id,
                         module_name: module.module_name,
                         module_display_name: module.module_display_name,
                         base_price: parseFloat(module.base_price),
-                        customer_price: fullYearPrice, // Store full year price
-                        pro_rated_price: proRatedPrice, // Store pro-rated cost for remaining period
+                        customer_price: fullYearPrice,
+                        pro_rated_price: proRatedPrice,
                         remaining_months: remainingMonths,
                         payment_frequency: module.payment_frequency,
                         subscribed_at: new Date().toISOString()
-                    }
+                    })
                 }
-            })
+            }
 
             // Calculate total yearly subscription cost (full year for all modules)
             const yearlySubscriptionCost = selectedModulesData.reduce(
@@ -552,6 +620,7 @@ export default function EditEntityPage() {
             // Build update object
             const updateData: any = {
                 entity_name: entityName.trim(),
+                hospital_type: hospitalType ? [hospitalType] : null, // Store as array
                 currency: currency || null,
                 language: language || null,
                 
@@ -584,7 +653,7 @@ export default function EditEntityPage() {
                 // Additional Information
                 accreditation_details: accreditationDetails.trim() || null,
                 operating_licenses: licensesArray.length > 0 ? licensesArray : null,
-                services: servicesObject,
+                services: servicesArray,
                 
                 // Subscription Information
                 subscribed_modules: subscribedModulesArray,
@@ -611,6 +680,7 @@ export default function EditEntityPage() {
             }
 
             console.log('Updating entity with data:', updateData)
+            console.log('Subscribed modules count:', subscribedModulesArray.length)
 
             const { error: updateError } = await supabase
                 .schema('master_data')
@@ -619,17 +689,23 @@ export default function EditEntityPage() {
                 .eq('entity_platform_id', entityPlatformId)
 
             if (updateError) {
-                console.error('Error updating entity:', updateError)
+                console.error('❌ Error updating entity:', updateError)
+                alert(`Failed to save: ${updateError.message || JSON.stringify(updateError)}`)
                 throw updateError
             }
 
+            console.log('✅ Entity updated successfully!')
+            
             // Module selection is stored in the hospitals table only
             // No separate entity_modules junction table is used
 
-            router.push(`/organization/${organizationPlatformId}/entities`)
+            // Redirect to HMS home page
+            router.push(`/organization/${organizationPlatformId}/entities/${entityPlatformId}/hms`)
         } catch (err) {
-            console.error('Error updating entity:', err)
-            setError(err instanceof Error ? err.message : 'Failed to update entity')
+            console.error('❌ Error updating entity:', err)
+            const errorMessage = err instanceof Error ? err.message : 'Failed to update entity'
+            setError(errorMessage)
+            alert(`Error: ${errorMessage}`)
         } finally {
             setLoading(false)
         }
@@ -770,14 +846,22 @@ export default function EditEntityPage() {
                                 <label htmlFor="hospitalType" className="block text-sm font-medium text-gray-700 mb-1">
                                     Hospital Type
                                 </label>
-                                <input
-                                    type="text"
+                                <select
                                     id="hospitalType"
                                     value={hospitalType}
                                     onChange={(e) => setHospitalType(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                    placeholder="e.g., General, Specialty"
-                                />
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                                >
+                                    <option value="">Select hospital type...</option>
+                                    <option value="solo_neighborhood_clinic">Solo / Neighborhood Clinic</option>
+                                    <option value="multi_vet_general">Multi-Vet General Hospital</option>
+                                    <option value="specialty_referral">Specialty & Referral Center</option>
+                                    <option value="emergency_critical">Emergency & Critical Care Hospital</option>
+                                    <option value="full_service_medical">Full-Service Animal Medical Center</option>
+                                    <option value="teaching_university">Teaching / University Hospital</option>
+                                    <option value="government_ngo">Government / NGO Hospital</option>
+                                    <option value="mobile_field">Mobile / Field Practice</option>
+                                </select>
                             </div>
                             <div className="md:col-span-2">
                                 <label htmlFor="operatingLicenses" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1268,17 +1352,60 @@ export default function EditEntityPage() {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="services" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Services (JSON format)
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Services Offered
+                                    <span className="ml-2 text-xs text-gray-500">
+                                        ({selectedServices.length} selected)
+                                    </span>
                                 </label>
-                                <textarea
-                                    id="services"
-                                    value={services}
-                                    onChange={(e) => setServices(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
-                                    placeholder='{"emergency": true, "boarding": false, "grooming": true}'
-                                    rows={4}
-                                />
+                                <div className="border border-gray-300 rounded-lg p-4 max-h-96 overflow-y-auto bg-white">
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                        {SERVICE_OPTIONS.map((service) => (
+                                            <label
+                                                key={service.value}
+                                                className="flex items-start gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedServices.includes(service.value)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedServices([...selectedServices, service.value])
+                                                        } else {
+                                                            setSelectedServices(selectedServices.filter(s => s !== service.value))
+                                                        }
+                                                    }}
+                                                    className="mt-0.5 h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded flex-shrink-0"
+                                                />
+                                                <span className="text-sm text-gray-700 flex-1 leading-snug">
+                                                    {service.label}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                {selectedServices.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {selectedServices.map((serviceValue) => {
+                                            const service = SERVICE_OPTIONS.find(s => s.value === serviceValue)
+                                            return service ? (
+                                                <span
+                                                    key={serviceValue}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full"
+                                                >
+                                                    {service.label}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedServices(selectedServices.filter(s => s !== serviceValue))}
+                                                        className="hover:text-emerald-900"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ) : null
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

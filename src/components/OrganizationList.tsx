@@ -14,6 +14,12 @@ export function OrganizationList() {
     const [error, setError] = useState<string | null>(null)
     const [userPlatformId, setUserPlatformId] = useState<string | null>(null)
     const [hasFetched, setHasFetched] = useState(false)
+    
+    // Delete modal state
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [organizationToDelete, setOrganizationToDelete] = useState<Organization | null>(null)
+    const [deleteConfirmText, setDeleteConfirmText] = useState('')
+    const [isDeleting, setIsDeleting] = useState(false)
 
     useEffect(() => {
         async function fetchOrganizations() {
@@ -142,6 +148,59 @@ export function OrganizationList() {
 
     const handleGoToEntities = (organizationPlatformId: string) => {
         router.push(`/organization/${organizationPlatformId}/entities`)
+    }
+
+    const handleDeleteClick = (org: Organization) => {
+        setOrganizationToDelete(org)
+        setDeleteConfirmText('')
+        setShowDeleteModal(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!organizationToDelete || deleteConfirmText !== 'delete this organization') {
+            return
+        }
+
+        try {
+            setIsDeleting(true)
+            
+            // Soft delete by setting deleted_at timestamp
+            const { error: deleteError } = await supabase
+                .schema('master_data')
+                .from('organizations')
+                .update({ 
+                    deleted_at: new Date().toISOString(),
+                    is_active: 'inactive'
+                })
+                .eq('organization_id', organizationToDelete.organization_id)
+
+            if (deleteError) {
+                throw deleteError
+            }
+
+            // Remove from local state
+            setOrganizations(prev => 
+                prev.filter(org => org.organization_id !== organizationToDelete.organization_id)
+            )
+
+            // Close modal
+            setShowDeleteModal(false)
+            setOrganizationToDelete(null)
+            setDeleteConfirmText('')
+            
+            console.log('✅ Organization deleted successfully')
+        } catch (err) {
+            console.error('❌ Error deleting organization:', err)
+            setError(err instanceof Error ? err.message : 'Failed to delete organization')
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    const handleDeleteCancel = () => {
+        setShowDeleteModal(false)
+        setOrganizationToDelete(null)
+        setDeleteConfirmText('')
     }
 
     if (loading) {
@@ -295,19 +354,31 @@ export function OrganizationList() {
                                         <div className="flex items-center justify-end gap-2">
                                             <button
                                                 onClick={() => handleGoToEntities(org.organization_platform_id)}
-                                                className="rounded-lg p-2 text-sky-600 transition hover:bg-sky-50"
+                                                className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-700 flex items-center gap-1"
                                                 title="Go to Entities"
                                             >
-                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
+                                                Entities
                                             </button>
                                             <button
                                                 onClick={() => handleEdit(org.organization_id)}
-                                                className="rounded-lg bg-slate-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-600"
+                                                className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100"
                                                 title="Edit Organization"
                                             >
-                                                Edit
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteClick(org)}
+                                                className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"
+                                                title="Delete Organization"
+                                            >
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
                                             </button>
                                         </div>
                                     </td>
@@ -315,6 +386,72 @@ export function OrganizationList() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && organizationToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+                        {/* Header */}
+                        <div className="mb-4 flex items-start gap-3">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-gray-900">Delete Organization</h3>
+                                <p className="mt-1 text-sm text-gray-600">
+                                    This action cannot be undone. This will permanently delete the organization.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Organization Info */}
+                        <div className="mb-4 rounded-lg bg-gray-50 p-3">
+                            <p className="text-sm font-semibold text-gray-900">
+                                {organizationToDelete.organization_name}
+                            </p>
+                            {organizationToDelete.brand_name && (
+                                <p className="text-xs text-gray-600">{organizationToDelete.brand_name}</p>
+                            )}
+                        </div>
+
+                        {/* Confirmation Input */}
+                        <div className="mb-6">
+                            <label htmlFor="confirmDelete" className="block text-sm font-medium text-gray-700 mb-2">
+                                Please type <span className="font-bold text-red-600">delete this organization</span> to confirm
+                            </label>
+                            <input
+                                id="confirmDelete"
+                                type="text"
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                placeholder="delete this organization"
+                                autoComplete="off"
+                            />
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleDeleteCancel}
+                                disabled={isDeleting}
+                                className="flex-1 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-200 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteConfirm}
+                                disabled={deleteConfirmText !== 'delete this organization' || isDeleting}
+                                className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Organization'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
