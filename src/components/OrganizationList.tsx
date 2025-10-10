@@ -291,7 +291,7 @@ export function OrganizationList() {
                                                 <img 
                                                     src={org.logo_storage.url} 
                                                     alt={org.organization_name} 
-                                                    className="h-10 w-10 rounded-lg object-cover"
+                                                    className="h-10 w-10 rounded-lg object-contain"
                                                 />
                                             ) : (
                                                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-emerald-500">
