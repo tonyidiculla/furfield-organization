@@ -1,12 +1,15 @@
 # Fix RLS Policy Issue for Organizations Table
 
 ## Problem
+
 Error: `new row violates row-level security policy for table "organizations"`
 
 This occurs when trying to UPDATE an organization. The RLS policy's `WITH CHECK` clause is preventing the update.
 
 ## Root Cause
+
 The RLS policy on the `organizations` table was referencing a non-existent `user_privileges` table. Your application actually uses:
+
 - `profiles` table (links user_id to user_platform_id)
 - `user_to_role_assignment` table (assigns roles to users for organizations)
 - `platform_roles` table (defines role permissions like entity_configuration, entity_administration)
@@ -24,18 +27,18 @@ Run this SQL in your Supabase SQL Editor:
 DROP POLICY IF EXISTS "organizations_update_policy" ON master_data.organizations;
 
 -- Create new UPDATE policy
-CREATE POLICY "organizations_update_policy" 
+CREATE POLICY "organizations_update_policy"
 ON master_data.organizations
 FOR UPDATE
 USING (
     -- User must have privileges for this organization
     EXISTS (
-        SELECT 1 
+        SELECT 1
         FROM master_data.user_privileges up
         WHERE up.user_id = auth.uid()
         AND up.organization_id = organizations.organization_id
         AND (
-            up.access_entity_configuration = true 
+            up.access_entity_configuration = true
             OR up.access_entity_administration = true
         )
         AND up.is_active = true
@@ -54,13 +57,13 @@ After running the fix, verify with:
 
 ```sql
 -- Check the new policy
-SELECT 
-    policyname, 
+SELECT
+    policyname,
     cmd,
     qual as using_clause,
     with_check
-FROM pg_policies 
-WHERE schemaname = 'master_data' 
+FROM pg_policies
+WHERE schemaname = 'master_data'
 AND tablename = 'organizations'
 AND cmd = 'UPDATE';
 
@@ -78,8 +81,9 @@ WHERE organization_id = '639e9d01-756f-4776-80ed-075e5cedefb6';
 ## Diagnostic Steps (if issue persists)
 
 1. **Check your privileges:**
+
    ```sql
-   SELECT * FROM master_data.user_privileges 
+   SELECT * FROM master_data.user_privileges
    WHERE user_id = auth.uid()
    AND organization_id = '639e9d01-756f-4776-80ed-075e5cedefb6';
    ```

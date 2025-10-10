@@ -28,6 +28,7 @@ supabase db push supabase/migrations/expose_master_data_via_rpc.sql
 ## Option 3: Manual Copy-Paste
 
 The migration file is located at:
+
 ```
 /Users/tonyidiculla/Developer/organization/supabase/migrations/expose_master_data_via_rpc.sql
 ```
@@ -58,12 +59,12 @@ Creates 8 RPC functions in the `public` schema:
 Run this query in SQL Editor to verify:
 
 ```sql
-SELECT 
+SELECT
     routine_name,
     routine_type
 FROM information_schema.routines
 WHERE routine_schema = 'public'
-    AND (routine_name LIKE '%privilege%' 
+    AND (routine_name LIKE '%privilege%'
          OR routine_name LIKE '%role%')
 ORDER BY routine_name;
 ```

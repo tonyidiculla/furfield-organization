@@ -3,14 +3,17 @@
 ## Completed Tasks
 
 ### 1. ✅ Created Migration File
+
 **File**: `supabase/migrations/20250110_add_missing_organization_fields.sql`
 
 **Added Columns**:
+
 - `manager_phone` (text) - Manager's contact phone number
 - `business_type` (text) - Type of business entity
 - `theme_preference` (text) - UI theme preference (default: 'light')
 
 **To Apply**: Run this SQL in your Supabase SQL Editor:
+
 ```sql
 -- Add missing fields to organizations table
 ALTER TABLE master_data.organizations
@@ -29,9 +32,11 @@ COMMENT ON COLUMN master_data.organizations.theme_preference IS 'UI theme prefer
 ```
 
 ### 2. ✅ Updated Organization TypeScript Type
+
 **File**: `src/types/organization.ts`
 
 **Mapped to Actual Database Fields**:
+
 - ✅ `manager_first_name` & `manager_last_name` (instead of single `manager_name`)
 - ✅ `manager_email` (already exists in DB)
 - ✅ `manager_phone` (added in migration)
@@ -45,33 +50,39 @@ COMMENT ON COLUMN master_data.organizations.theme_preference IS 'UI theme prefer
 - ✅ `theme_preference` (added in migration)
 
 **Additional Fields Included**:
+
 - Owner information fields
 - Soft delete fields (deleted_at, deleted_by, deletion_reason)
 
 ### 3. ✅ Updated Edit Form
+
 **File**: `src/app/organization/[id]/edit/page.tsx`
 
 **Changes Made**:
 
 #### Manager Information Section (4 fields):
+
 - Manager First Name
 - Manager Last Name
 - Manager Email
 - Manager Phone
 
 #### Business Registration Section (4 fields):
+
 - Business Registration Number
 - VAT/GST Number (mapped from `vat_gst_number`)
 - Incorporation Date (date picker)
 - Business Type (dropdown with options)
 
 #### Branding & Theme Section (4 fields):
+
 - Primary Color (color picker + hex input)
 - Accent Color (color picker + hex input)
 - Secondary Color (color picker + hex input)
 - Theme Preference (dropdown: Light/Dark/Auto)
 
 **Form State Updated**:
+
 - Added all new fields to `formData` initialization
 - Updated `handleSubmit` to include all fields in `updateData`
 - All fields use correct database column names
@@ -80,21 +91,21 @@ COMMENT ON COLUMN master_data.organizations.theme_preference IS 'UI theme prefer
 
 Based on your provided schema, the organizations table has these relevant columns:
 
-| Column Name | Data Type | Nullable | Default |
-|------------|-----------|----------|---------|
-| manager_first_name | text | YES | null |
-| manager_last_name | text | YES | null |
-| manager_email | text | YES | null |
-| manager_phone | text | YES | null ⬅️ NEW |
-| manager_platform_id | text | YES | null |
-| business_registration_number | text | YES | null |
-| vat_gst_number | text | YES | null |
-| incorporation_date | date | YES | null |
-| business_type | text | YES | null ⬅️ NEW |
-| primary_color | text | YES | '#3b82f6' |
-| accent_color | text | YES | '#8b5cf6' |
-| secondary_color | text | NO | '#64748b' |
-| theme_preference | text | YES | 'light' ⬅️ NEW |
+| Column Name                  | Data Type | Nullable | Default        |
+| ---------------------------- | --------- | -------- | -------------- |
+| manager_first_name           | text      | YES      | null           |
+| manager_last_name            | text      | YES      | null           |
+| manager_email                | text      | YES      | null           |
+| manager_phone                | text      | YES      | null ⬅️ NEW    |
+| manager_platform_id          | text      | YES      | null           |
+| business_registration_number | text      | YES      | null           |
+| vat_gst_number               | text      | YES      | null           |
+| incorporation_date           | date      | YES      | null           |
+| business_type                | text      | YES      | null ⬅️ NEW    |
+| primary_color                | text      | YES      | '#3b82f6'      |
+| accent_color                 | text      | YES      | '#8b5cf6'      |
+| secondary_color              | text      | NO       | '#64748b'      |
+| theme_preference             | text      | YES      | 'light' ⬅️ NEW |
 
 ## Next Steps
 
@@ -111,6 +122,7 @@ Based on your provided schema, the organizations table has these relevant column
 ## Business Type Options
 
 The dropdown includes these common business types:
+
 - Sole Proprietorship
 - Partnership
 - Limited Liability Partnership (LLP)

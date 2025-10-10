@@ -1,12 +1,15 @@
 # 🚀 Quick Setup: Grant master_data Schema Access
 
 ## Current Status
+
 ❌ Schema is exposed but **permissions not granted**
+
 - Error: `permission denied for schema master_data (Code: 42501)`
 
 ## Solution: Grant Permissions
 
 ### Step 1: Open Supabase SQL Editor
+
 1. Go to: https://supabase.com/dashboard/project/xnetjsifkhtbbpadwlxy
 2. Click **SQL Editor** in the left sidebar
 3. Click **New Query**
@@ -21,7 +24,7 @@ GRANT USAGE ON SCHEMA master_data TO anon, authenticated, service_role;
 GRANT SELECT ON ALL TABLES IN SCHEMA master_data TO anon, authenticated, service_role;
 
 -- Set default privileges for future tables
-ALTER DEFAULT PRIVILEGES IN SCHEMA master_data 
+ALTER DEFAULT PRIVILEGES IN SCHEMA master_data
 GRANT SELECT ON TABLES TO anon, authenticated, service_role;
 
 -- Add master_data to the search path for PostgREST
@@ -41,6 +44,7 @@ node --import tsx scripts/test-schema-access.ts
 ```
 
 You should see:
+
 - ✅ Master_data schema accessible with anon key!
 - ✅ Master_data schema accessible with service role!
 

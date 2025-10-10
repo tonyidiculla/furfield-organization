@@ -1,15 +1,19 @@
 # 🚨 REQUIRED: Run This Migration in Supabase Dashboard
 
 ## The Problem
+
 The form is trying to save these fields that **don't exist in your database yet**:
+
 - ❌ `manager_phone`
 - ❌ `business_type`
 - ❌ `theme_preference`
 
 ## The Solution
+
 Run this SQL in your **Supabase SQL Editor**:
 
 ### Step 1: Open Supabase SQL Editor
+
 1. Go to https://supabase.com/dashboard
 2. Select your project
 3. Click "SQL Editor" in the left sidebar
@@ -36,13 +40,15 @@ COMMENT ON COLUMN master_data.organizations.theme_preference IS 'UI theme prefer
 -- Verify columns were added
 SELECT column_name, data_type, is_nullable, column_default
 FROM information_schema.columns
-WHERE table_schema = 'master_data' 
+WHERE table_schema = 'master_data'
     AND table_name = 'organizations'
     AND column_name IN ('manager_phone', 'business_type', 'theme_preference');
 ```
 
 ### Step 3: Verify Success
+
 After running the SQL, you should see output like:
+
 ```
 column_name        | data_type | is_nullable | column_default
 -------------------+-----------+-------------+----------------
@@ -52,6 +58,7 @@ theme_preference   | text      | YES         | 'light'::text
 ```
 
 ### Step 4: Uncomment Fields in Code
+
 After the migration is successful, uncomment these lines in:
 **`src/app/organization/[id]/edit/page.tsx`** (around line 178-191):
 
@@ -64,6 +71,7 @@ theme_preference: formData.theme_preference || 'light',
 Remove the `// TODO: Add after migration` comments.
 
 ## Current Status
+
 ✅ Form fields are in the UI
 ✅ TypeScript types are updated
 ✅ Form loads and displays correctly
@@ -71,4 +79,5 @@ Remove the `// TODO: Add after migration` comments.
 ❌ Saving will fail for the 3 new fields until migration is complete
 
 ## Why Can't I Apply This Automatically?
+
 The psql connection failed with "No route to host", which means I can't directly execute SQL from your local machine. You need to run it through the Supabase dashboard which has proper authentication and network access.

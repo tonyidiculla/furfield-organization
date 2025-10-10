@@ -7,6 +7,7 @@
 2. Click **"New bucket"**
 
 3. Configure the bucket:
+
    - **Name**: `avatars`
    - **Public bucket**: ✅ Yes (enable this so avatar URLs work)
    - **File size limit**: 2 MB (recommended for avatars)
@@ -15,8 +16,10 @@
 4. Click **"Create bucket"**
 
 5. (Optional) Set up RLS policies for the bucket:
+
    - Go to the bucket policies
    - Add a policy to allow authenticated users to upload:
+
      ```sql
      -- Allow authenticated users to upload their own avatars
      CREATE POLICY "Users can upload their own avatar"
@@ -61,7 +64,7 @@ WITH CHECK (
   (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Allow authenticated users to update their own avatars  
+-- Allow authenticated users to update their own avatars
 CREATE POLICY "Users can update their own avatar"
 ON storage.objects FOR UPDATE
 TO authenticated

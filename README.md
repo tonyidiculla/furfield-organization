@@ -150,19 +150,19 @@ import { RequireModule, RequireAnyModule } from '@/components/PrivilegeGates'
 Access user privileges through the `UserContext`:
 
 ```tsx
-'use client'
-import { useUser } from '@/contexts/UserContext'
-import { hasPrivilegeLevel, hasPermission, hasModule } from '@/lib/privileges'
+"use client";
+import { useUser } from "@/contexts/UserContext";
+import { hasPrivilegeLevel, hasPermission, hasModule } from "@/lib/privileges";
 
 export default function MyComponent() {
-  const { privileges, privilegesLoading } = useUser()
+  const { privileges, privilegesLoading } = useUser();
 
-  if (privilegesLoading) return <LoadingSpinner />
-  if (!privileges) return <NoAccessMessage />
+  if (privilegesLoading) return <LoadingSpinner />;
+  if (!privileges) return <NoAccessMessage />;
 
-  const canManageOrgs = hasPrivilegeLevel(privileges, 'organization_admin')
-  const canViewEMR = hasPermission(privileges, 'emr.read')
-  const hasHRModule = hasModule(privileges, 'human_resources')
+  const canManageOrgs = hasPrivilegeLevel(privileges, "organization_admin");
+  const canViewEMR = hasPermission(privileges, "emr.read");
+  const hasHRModule = hasModule(privileges, "human_resources");
 
   return (
     <div>
@@ -170,7 +170,7 @@ export default function MyComponent() {
       {canViewEMR && <PatientRecords />}
       {hasHRModule && <EmployeeManagement />}
     </div>
-  )
+  );
 }
 ```
 

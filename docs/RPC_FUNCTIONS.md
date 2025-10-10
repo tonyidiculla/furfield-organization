@@ -63,71 +63,77 @@ This implementation provides secure access to the `master_data` schema through P
 ### Read Functions (All authenticated users)
 
 #### `get_user_privileges(user_id UUID)`
+
 Returns all active role assignments with role details for a user.
 
 ```typescript
-import { supabase } from '@/lib/supabase'
+import { supabase } from "@/lib/supabase";
 
-const { data, error } = await supabase.rpc('get_user_privileges', {
-    user_id_param: userId
-})
+const { data, error } = await supabase.rpc("get_user_privileges", {
+  user_id_param: userId,
+});
 ```
 
 #### `user_has_privilege_level(user_id UUID, required_level INTEGER)`
+
 Checks if user meets minimum privilege level (lower number = higher privilege).
 
 ```typescript
-const { data } = await supabase.rpc('user_has_privilege_level', {
-    user_id_param: userId,
-    required_level: 2 // organization_admin
-})
+const { data } = await supabase.rpc("user_has_privilege_level", {
+  user_id_param: userId,
+  required_level: 2, // organization_admin
+});
 // Returns: boolean
 ```
 
 #### `user_has_permission(user_id UUID, permission_key TEXT)`
+
 Checks if user has a specific permission.
 
 ```typescript
-const { data } = await supabase.rpc('user_has_permission', {
-    user_id_param: userId,
-    permission_key: 'emr.admin'
-})
+const { data } = await supabase.rpc("user_has_permission", {
+  user_id_param: userId,
+  permission_key: "emr.admin",
+});
 // Returns: boolean
 ```
 
 #### `user_has_module(user_id UUID, module_name TEXT)`
+
 Checks if user has access to a module.
 
 ```typescript
-const { data } = await supabase.rpc('user_has_module', {
-    user_id_param: userId,
-    module_name: 'human_resources'
-})
+const { data } = await supabase.rpc("user_has_module", {
+  user_id_param: userId,
+  module_name: "human_resources",
+});
 // Returns: boolean
 ```
 
 ### Admin Functions (Privilege level ≤ 2 only)
 
 #### `assign_role_to_user(target_user_id UUID, role_id UUID, expires_at TIMESTAMPTZ)`
+
 Assigns a role to a user. Only platform_admin (1) and organization_admin (2) can call this.
 
 ```typescript
-const { data } = await supabase.rpc('assign_role_to_user', {
-    target_user_id: userId,
-    role_id: roleId,
-    expires_at_param: null // or '2025-12-31'
-})
+const { data } = await supabase.rpc("assign_role_to_user", {
+  target_user_id: userId,
+  role_id: roleId,
+  expires_at_param: null, // or '2025-12-31'
+});
 // Returns: assignment UUID
 ```
 
 #### `revoke_role_from_user(target_user_id UUID, role_id UUID)`
+
 Revokes a role from a user.
 
 ```typescript
-const { data } = await supabase.rpc('revoke_role_from_user', {
-    target_user_id: userId,
-    role_id: roleId
-})
+const { data } = await supabase.rpc("revoke_role_from_user", {
+  target_user_id: userId,
+  role_id: roleId,
+});
 // Returns: boolean
 ```
 
@@ -137,24 +143,24 @@ Use `src/lib/privilegeRpc.ts` for typed TypeScript wrappers:
 
 ```typescript
 import {
-    checkUserPrivilegeLevel,
-    checkUserPermission,
-    checkUserModule,
-    assignRoleToUser,
-    revokeRoleFromUser
-} from '@/lib/privilegeRpc'
+  checkUserPrivilegeLevel,
+  checkUserPermission,
+  checkUserModule,
+  assignRoleToUser,
+  revokeRoleFromUser,
+} from "@/lib/privilegeRpc";
 
 // Check privilege
-const isAdmin = await checkUserPrivilegeLevel(userId, 2)
+const isAdmin = await checkUserPrivilegeLevel(userId, 2);
 
 // Check permission
-const canEditEMR = await checkUserPermission(userId, 'emr.admin')
+const canEditEMR = await checkUserPermission(userId, "emr.admin");
 
 // Check module
-const hasHR = await checkUserModule(userId, 'human_resources')
+const hasHR = await checkUserModule(userId, "human_resources");
 
 // Assign role (admin only)
-const assignmentId = await assignRoleToUser(userId, roleId)
+const assignmentId = await assignRoleToUser(userId, roleId);
 ```
 
 ## Security Features
@@ -169,6 +175,7 @@ const assignmentId = await assignRoleToUser(userId, roleId)
 ## Performance Optimizations
 
 The migration includes indexes:
+
 - `idx_user_role_assignment_user_active` - Fast user lookup
 - `idx_user_role_assignment_expires` - Expiration checks
 - `idx_platform_roles_active` - Active roles filtering
