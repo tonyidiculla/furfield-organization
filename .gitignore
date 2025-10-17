@@ -1,1 +1,5 @@
 node_modules
+
+# Archive directories (optional - uncomment to exclude from git)
+# archive/
+# supabase/archive/

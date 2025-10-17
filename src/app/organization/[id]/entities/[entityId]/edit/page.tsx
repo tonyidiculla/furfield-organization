@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 import CountrySelector from '@/components/CountrySelector'
 import CurrencySelector from '@/components/CurrencySelector'
 import { getCurrencyForCountry, getLanguageForCountry } from '@/hooks/useCountries'
@@ -53,7 +53,7 @@ interface Organization {
 }
 
 export default function EditEntityPage() {
-    const { user } = useUser()
+    const { user } = useAuth()
     const router = useRouter()
     const params = useParams()
     const organizationPlatformId = params.id as string

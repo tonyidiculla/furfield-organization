@@ -1,7 +1,1 @@
-{
-  "/organization/[id]/entities/page": "app/organization/[id]/entities/page.js",
-  "/organization/page": "app/organization/page.js",
-  "/organization/[id]/entities/[entityId]/edit/page": "app/organization/[id]/entities/[entityId]/edit/page.js",
-  "/organization/create/page": "app/organization/create/page.js",
-  "/organization/[id]/entities/[entityId]/hms/page": "app/organization/[id]/entities/[entityId]/hms/page.js"
-}
+{}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 
 interface Entity {
     entity_platform_id: string
@@ -26,7 +26,7 @@ interface Organization {
 }
 
 export default function HMSHomePage() {
-    const { user } = useUser()
+    const { user } = useAuth()
     const router = useRouter()
     const params = useParams()
     const organizationPlatformId = params.id as string
@@ -128,7 +128,18 @@ export default function HMSHomePage() {
         )
     }
 
-    const subscribedModules = entity.subscribed_modules || []
+    const subscribedModules = entity.subscribed_modules || [];
+
+    // Temporary: Enable all modules for demonstration purposes
+    const allModules = [
+        { module_id: 1, module_name: 'Outpatient', module_display_name: 'Outpatient Management' },
+        { module_id: 2, module_name: 'Inpatient', module_display_name: 'Inpatient Management' },
+        { module_id: 3, module_name: 'Diagnostics', module_display_name: 'Diagnostics' },
+        { module_id: 4, module_name: 'Pharmacy', module_display_name: 'Pharmacy Management' },
+        { module_id: 5, module_name: 'Billing', module_display_name: 'Billing and Invoicing' },
+    ];
+
+    const accessibleModules = subscribedModules.length > 0 ? subscribedModules : allModules;
     const daysRemaining = getSubscriptionDaysRemaining()
     const isSubscriptionActive = daysRemaining && daysRemaining > 0
 
@@ -155,50 +166,43 @@ export default function HMSHomePage() {
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => router.push(`/organization/${organizationPlatformId}/entities/${entityPlatformId}/edit`)}
-                            className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Settings
-                        </button>
-                    </div>
-
-                    {/* Subscription Status Banner */}
-                    {isSubscriptionActive && (
-                        <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center justify-center w-10 h-10 bg-emerald-100 rounded-full">
-                                        <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-semibold text-emerald-900">Active Subscription</p>
-                                        <p className="text-xs text-emerald-700">
-                                            {daysRemaining} days remaining • Expires {formatDate(entity.subscription_end_date)}
-                                        </p>
+                        <div className="flex items-center gap-4">
+                            {/* Subscription Status Badge */}
+                            {isSubscriptionActive && (
+                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full">
+                                            <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-emerald-900">Active Subscription</p>
+                                            <p className="text-xs text-emerald-700">
+                                                {daysRemaining} days remaining • Expires {formatDate(entity.subscription_end_date)}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-emerald-700">Annual Cost</p>
-                                    <p className="text-lg font-bold text-emerald-900">
-                                        ${entity.yearly_subscription_cost?.toLocaleString() || '0'}
-                                    </p>
-                                </div>
-                            </div>
+                            )}
+                            <button
+                                onClick={() => router.push(`/organization/${organizationPlatformId}/entities/${entityPlatformId}/edit`)}
+                                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Settings
+                            </button>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {subscribedModules.length === 0 ? (
+                {accessibleModules.length === 0 ? (
                     <div className="bg-white rounded-xl shadow-md p-12 text-center">
                         <div className="text-gray-400 text-6xl mb-4">📦</div>
                         <h2 className="text-2xl font-bold text-gray-800 mb-2">No Modules Subscribed</h2>
@@ -222,7 +226,7 @@ export default function HMSHomePage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {subscribedModules.map((module: any) => (
+                            {accessibleModules.map((module: any) => (
                                 <div
                                     key={module.module_id}
                                     onClick={() => handleModuleClick(module.module_id, module.module_name)}
@@ -250,13 +254,7 @@ export default function HMSHomePage() {
                                             </p>
                                         )}
 
-                                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                                            <div>
-                                                <p className="text-xs text-gray-500">Annual Price</p>
-                                                <p className="text-sm font-bold text-gray-900">
-                                                    ${module.customer_price?.toFixed(2) || module.base_price?.toFixed(2) || '0.00'}
-                                                </p>
-                                            </div>
+                                        <div className="flex items-center justify-end pt-4 border-t border-gray-100">
                                             <div className="flex items-center text-emerald-600 group-hover:translate-x-1 transition-transform">
                                                 <span className="text-sm font-medium mr-1">Launch</span>
                                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

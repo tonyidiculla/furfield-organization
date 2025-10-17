@@ -10,49 +10,45 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 async function checkSchema() {
-    console.log('🔍 Checking database schema...\n')
+    console.log('🔍 Checking master_data schema...\n')
 
-    // Check public schema tables
-    console.log('📋 Checking public schema...')
-    
-    // Try profiles
+    // Check profiles
     const { data: profiles, error: profilesError } = await supabase
+        .schema('master_data')
         .from('profiles')
         .select('*')
         .limit(1)
-    
-    console.log('profiles table:', profilesError ? `❌ ${profilesError.message}` : `✅ Exists (${profiles?.length || 0} rows shown)`)
-    
-    // Try platform_admin
-    const { data: platformAdmin, error: platformAdminError } = await supabase
-        .from('platform_admin')
-        .select('*')
-        .limit(1)
-    
-    console.log('platform_admin table:', platformAdminError ? `❌ ${platformAdminError.message}` : `✅ Exists (${platformAdmin?.length || 0} rows shown)`)
-    
-    // Show what columns exist if tables are found
+
+    console.log('master_data.profiles:', profilesError ? `❌ ${profilesError.message}` : `✅ Exists (${profiles?.length || 0} rows shown)`)
+
     if (!profilesError && profiles && profiles.length > 0) {
-        console.log('\n📄 profiles columns:', Object.keys(profiles[0]))
-    }
-    
-    if (!platformAdminError && platformAdmin && platformAdmin.length > 0) {
-        console.log('\n📄 platform_admin columns:', Object.keys(platformAdmin[0]))
+        console.log('\n📄 master_data.profiles columns:', Object.keys(profiles[0]))
     }
 
-    // Check master_data schema
-    console.log('\n📋 Checking master_data schema...')
-    
-    const { data: assignments, error: assignmentsError } = await supabase
+    // Check platform roles
+    const { data: platformRoles, error: rolesError } = await supabase
+        .schema('master_data')
+        .from('platform_roles')
+        .select('*')
+        .limit(1)
+
+    console.log('\nmaster_data.platform_roles:', rolesError ? `❌ ${rolesError.message}` : `✅ Exists (${platformRoles?.length || 0} rows shown)`)
+
+    if (!rolesError && platformRoles && platformRoles.length > 0) {
+        console.log('\n📄 master_data.platform_roles columns:', Object.keys(platformRoles[0]))
+    }
+
+    // Check hospital assignments (if present)
+    const { data: hospitalAssignments, error: hospitalAssignmentsError } = await supabase
         .schema('master_data')
         .from('user_to_role_assignment')
         .select('*')
         .limit(1)
+
+    console.log('\nmaster_data.user_to_role_assignment:', hospitalAssignmentsError ? `❌ ${hospitalAssignmentsError.message}` : `✅ Exists (${hospitalAssignments?.length || 0} rows shown)`)
     
-    console.log('user_to_role_assignment:', assignmentsError ? `❌ ${assignmentsError.message}` : `✅ Exists`)
-    
-    if (!assignmentsError && assignments && assignments.length > 0) {
-        console.log('📄 user_to_role_assignment columns:', Object.keys(assignments[0]))
+    if (!hospitalAssignmentsError && hospitalAssignments && hospitalAssignments.length > 0) {
+        console.log('\n📄 master_data.user_to_role_assignment columns:', Object.keys(hospitalAssignments[0]))
     }
 }
 

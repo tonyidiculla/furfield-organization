@@ -5,64 +5,210 @@ import Image from "next/image"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 
-import { useUser } from "@/contexts/UserContext"
+import { useAuth } from "@furfield/auth-service"
 import { FurfieldLogo } from "@/components/FurfieldLogo"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 
 export function AppHeader() {
     const router = useRouter()
     const pathname = usePathname()
-    const { user, loading, privileges, refreshUser } = useUser()
-    
-    // Hide header on auth pages
-    if (pathname?.startsWith('/auth/')) {
-        return null
-    }
+    const { user, loading, signOut, refreshSession } = useAuth()
+    const supabase = useMemo(() => createClient(), [])
     const [uploading, setUploading] = useState(false)
     const [menuError, setMenuError] = useState<string | null>(null)
     const [userName, setUserName] = useState<string | null>(null)
+    const [userRole, setUserRole] = useState<string | null>(null)
+    const [userAvatar, setUserAvatar] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    
+    // Get privileges from user object
+    const privileges = user?.privileges
+    
+    // Hide header on auth pages (AFTER all hooks are defined)
+    if (pathname?.startsWith('/auth/')) {
+        return null
+    }
+
+    // Helper function to capitalize names properly
+    const capitalizeName = (name: string) => {
+        return name
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ')
+    }
 
     const email = user?.email ?? "guest@furfield.app"
-    const displayName = userName || user?.user_metadata?.name || email?.split('@')[0] || "Guest"
-    const initials = displayName?.charAt(0)?.toUpperCase() ?? "G"
+    const rawDisplayName = userName || user?.user_metadata?.name || email?.split('@')[0] || "Guest"
+    const displayName = capitalizeName(rawDisplayName)
+    const initials = displayName
+        .split(' ')
+        .map(word => word.charAt(0))
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
     const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>
-    const avatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : null
+    const avatarUrl = userAvatar || (typeof metadata.avatar_url === "string" ? metadata.avatar_url : null)
     
     // Get the display name of the highest privilege role
     const roleDisplayName = useMemo(() => {
+        // Use the role fetched from database first
+        if (userRole) return userRole
+        
+        // Fallback to privileges from user object (if available)
+        // Note: This is a fallback and may not have display_name
         if (!privileges?.roles || privileges.roles.length === 0) return null
-        const highestRole = privileges.roles.reduce((highest, role) => {
-            return role.level < highest.level ? role : highest
+        
+        // Since PlatformRole interface doesn't have level/display_name in TypeScript
+        // but database does have them, we use type assertion
+        const rolesWithLevel = privileges.roles as any[]
+        if (rolesWithLevel.length === 0) return null
+        
+        const highestRole = rolesWithLevel.reduce((highest, role) => {
+            const highestLevel = typeof highest.privilege_level === 'number' ? highest.privilege_level : 999
+            const roleLevel = typeof role.privilege_level === 'number' ? role.privilege_level : 999
+            return roleLevel < highestLevel ? role : highest
         })
-        return highestRole.display_name
-    }, [privileges])
+        
+        return highestRole.display_name || highestRole.role_name
+    }, [privileges, userRole])
 
-    // Fetch user's name from profiles
+    // Fetch complete user profile from database
     useEffect(() => {
-        async function fetchUserName() {
-            if (!user?.id) return
+        async function fetchUserProfile() {
+            // Try to get user from AuthProvider first, fallback to Supabase session if not available
+            let userId: string | undefined = user?.id
+            let userEmail: string | undefined = user?.email
+            let userMetadata: Record<string, unknown> | undefined = user?.user_metadata as Record<string, unknown> | undefined
             
-            const { data, error } = await supabase
-                .schema('master_data')
-                .from('profiles')
-                .select('first_name, last_name')
-                .eq('user_id', user.id)
-                .single()
-            
-            if (data && !error) {
-                const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ')
-                if (fullName) setUserName(fullName)
+            if (!userId) {
+                // Fallback: Check if there's a session in Supabase directly
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session?.user) {
+                    userId = session.user.id
+                    userEmail = session.user.email
+                    userMetadata = session.user.user_metadata as Record<string, unknown>
+                    console.log('📥 Using session user from Supabase directly:', userEmail)
+                } else {
+                    return
+                }
+            }
+
+            try {
+                console.log('📥 Fetching user profile for:', userEmail)
+                
+                // Also set avatar from user metadata if available
+                if (userMetadata?.avatar_url && typeof userMetadata.avatar_url === 'string') {
+                    setUserAvatar(userMetadata.avatar_url)
+                    console.log('✅ Avatar loaded from metadata:', userMetadata.avatar_url)
+                }
+                
+                const { data: profile, error: profileError } = await supabase
+                    .schema('master_data')
+                    .from('profiles')
+                    .select('first_name, last_name, user_platform_id')
+                    .eq('user_id', userId)
+                    .single()
+
+                if (profileError) {
+                    console.error('❌ Error fetching user profile:', profileError)
+                    return
+                }
+
+                if (profile) {
+                    console.log('✅ Profile fetched:', profile)
+                    
+                    // Combine first_name + last_name
+                    const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+                    if (fullName) {
+                        setUserName(fullName)
+                        console.log('✅ Display name set to:', fullName)
+                    }
+
+                    // Note: Avatar is loaded from user.user_metadata.avatar_url (set during upload)
+
+                    // Fetch user's actual role
+                    if (profile.user_platform_id) {
+                        const userPlatformId = profile.user_platform_id
+                        
+                        // Get role assignments
+                        const { data: roleAssignments, error: roleError } = await supabase
+                            .schema('master_data')
+                            .from('user_to_role_assignment')
+                            .select('platform_role_id')
+                            .eq('user_platform_id', userPlatformId)
+
+                        if (roleError || !roleAssignments || roleAssignments.length === 0) {
+                            console.log('⚠️ No role assignments found')
+                            return
+                        }
+
+                        // Get role details with display_name
+                        const roleIds = roleAssignments.map((r: { platform_role_id: number }) => r.platform_role_id)
+                        const { data: roles, error: rolesError } = await supabase
+                            .schema('master_data')
+                            .from('platform_roles')
+                            .select('role_name, display_name, privilege_level')
+                            .in('id', roleIds)
+                            .order('privilege_level', { ascending: true })
+
+                        if (rolesError || !roles || roles.length === 0) {
+                            console.log('⚠️ Could not fetch role details')
+                            return
+                        }
+
+                        // Use the role with highest privilege (lowest number)
+                        const primaryRole = roles[0]
+                        const roleDisplay = primaryRole.display_name || primaryRole.role_name
+                        setUserRole(roleDisplay)
+                        console.log('✅ Role set to:', roleDisplay)
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Exception fetching user profile:', error)
             }
         }
-        
-        fetchUserName()
-    }, [user?.id])
+
+        fetchUserProfile()
+    }, [user?.id, loading, supabase]) // Re-run when user or Supabase client context changes
 
     async function handleSignOut() {
-        await supabase.auth.signOut()
-        router.push('/auth/sign-in')
-        router.refresh()
+        try {
+            // 1. Sign out from Supabase (clears auth cookies)
+            await signOut()
+
+            const { error: supabaseSignOutError } = await supabase.auth.signOut()
+            if (supabaseSignOutError) {
+                console.warn('Supabase client sign-out warning:', supabaseSignOutError)
+            }
+            
+            // 2. Clear all localStorage (removes any cached tokens)
+            localStorage.clear()
+            
+            // 3. Clear sessionStorage as well
+            sessionStorage.clear()
+
+            // 4. Notify other tabs/windows about the logout
+            window.dispatchEvent(new Event('storage'))
+            
+            // 5. Redirect to auth service with cache-busting timestamp
+            // This prevents browser from using cached login page
+            window.location.href = `http://localhost:8000?t=${Date.now()}`
+        } catch (error) {
+            console.error('Error during sign out:', error)
+            try {
+                const { error: supabaseSignOutError } = await supabase.auth.signOut()
+                if (supabaseSignOutError) {
+                    console.warn('Supabase client sign-out warning during fallback:', supabaseSignOutError)
+                }
+            } catch (signOutError) {
+                console.error('Failed to force Supabase sign-out during fallback:', signOutError)
+            }
+            // Force redirect even if there's an error
+            localStorage.clear()
+            sessionStorage.clear()
+            window.dispatchEvent(new Event('storage'))
+            window.location.href = `http://localhost:8000?t=${Date.now()}`
+        }
     }
 
     function handleAvatarClick() {
@@ -133,7 +279,24 @@ export function AppHeader() {
                 throw updateError
             }
 
-            await refreshUser()
+            // Also update the profile_pic_url field for consistency
+            const { error: picError } = await supabase
+                .schema('master_data')
+                .from('profiles')
+                .update({ profile_pic_url: publicUrl })
+                .eq('user_id', user.id)
+
+            if (picError) {
+                console.error('⚠️ Could not update profile_pic_url:', picError)
+                // Don't throw - main update succeeded
+            }
+
+            // Update local state immediately
+            setUserAvatar(publicUrl)
+            console.log('✅ Avatar uploaded and updated:', publicUrl)
+
+            // Refresh the session to get updated user metadata
+            await refreshSession()
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to upload avatar. Please try again.'
             setMenuError(message)
@@ -188,6 +351,7 @@ export function AppHeader() {
                                         width={40}
                                         height={40}
                                         className="h-10 w-10 rounded-full object-cover"
+                                        style={{ width: 'auto', height: 'auto' }}
                                         unoptimized
                                     />
                                 ) : (

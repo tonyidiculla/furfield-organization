@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 
 interface Entity {
     entity_platform_id: string
@@ -27,10 +27,16 @@ interface Organization {
 }
 
 export default function OrganizationEntitiesPage() {
-    const { user } = useUser()
+    const { user } = useAuth()
     const router = useRouter()
     const params = useParams()
+    
+    console.log('[EntitiesPage] Component mounted with params:', params)
+    console.log('[EntitiesPage] params.id:', params.id)
+    console.log('[EntitiesPage] typeof params.id:', typeof params.id)
+    
     const organizationPlatformId = params.id as string
+    console.log('[EntitiesPage] organizationPlatformId extracted:', organizationPlatformId)
     
     const [organization, setOrganization] = useState<Organization | null>(null)
     const [entities, setEntities] = useState<Entity[]>([])
@@ -44,15 +50,41 @@ export default function OrganizationEntitiesPage() {
     const [isDeleting, setIsDeleting] = useState(false)
 
     useEffect(() => {
+        let isMounted = true
+        
         async function fetchData() {
-            if (!user?.id || !organizationPlatformId) {
+            if (!organizationPlatformId) {
+                console.log('[EntitiesPage] No organization ID provided')
                 setLoading(false)
                 return
             }
 
+            // Get user ID from AuthProvider or fallback to Supabase session
+            let userId: string | undefined = user?.id
+            
+            if (!userId) {
+                console.log('[EntitiesPage] No user from AuthProvider, checking session...')
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session?.user) {
+                    userId = session.user.id
+                    console.log('[EntitiesPage] Using session user from Supabase:', session.user.email)
+                } else {
+                    console.log('[EntitiesPage] No session available yet')
+                }
+            }
+            
+            if (!userId) {
+                console.log('[EntitiesPage] No user ID available, staying in loading state')
+                // Don't set loading to false - keep waiting for auth
+                return
+            }
+            
+            if (!isMounted) return
+
             try {
                 setLoading(true)
                 setError(null)
+                console.log('[EntitiesPage] Starting fetch for user:', userId, 'org:', organizationPlatformId)
 
                 // Fetch organization details using platform ID
                 const { data: orgData, error: orgError } = await supabase
@@ -97,6 +129,7 @@ export default function OrganizationEntitiesPage() {
                     .order('created_at', { ascending: false })
 
                 console.log('[EntitiesPage] Hospitals query result:', { count: entitiesData?.length, error: entitiesError })
+                console.log('[EntitiesPage] Hospitals data:', entitiesData)
                 
                 if (entitiesError) {
                     console.error('[EntitiesPage] Hospitals query error:', entitiesError)
@@ -104,16 +137,23 @@ export default function OrganizationEntitiesPage() {
                 }
                 
                 setEntities(entitiesData || [])
+                console.log('[EntitiesPage] ✅ Entities state updated with', entitiesData?.length || 0, 'entities')
             } catch (err: any) {
                 console.error('[EntitiesPage] Error fetching data:', err)
                 console.error('[EntitiesPage] Error details:', JSON.stringify(err, null, 2))
                 setError(err.message || 'Failed to load data')
             } finally {
-                setLoading(false)
+                if (isMounted) {
+                    setLoading(false)
+                }
             }
         }
 
         fetchData()
+        
+        return () => {
+            isMounted = false
+        }
     }, [user?.id, organizationPlatformId])
 
     const handleEdit = (entityPlatformId: string) => {
@@ -223,6 +263,14 @@ export default function OrganizationEntitiesPage() {
 
     const activeCount = entities.filter(entity => entity.is_active === true).length
     const inactiveCount = entities.length - activeCount
+
+    console.log('[EntitiesPage] Rendering with:', { 
+        entitiesCount: entities.length, 
+        entities, 
+        loading, 
+        error,
+        organization 
+    })
 
     return (
         <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-cyan-100 px-6 py-16 text-slate-700">

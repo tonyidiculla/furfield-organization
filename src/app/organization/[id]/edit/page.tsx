@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, ChangeEvent, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 import type { Organization } from '@/types/organization'
 import CurrencySelector from '@/components/CurrencySelector'
 import CountrySelector from '@/components/CountrySelector'

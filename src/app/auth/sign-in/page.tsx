@@ -4,11 +4,12 @@ import { FormEvent, Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 
-import { supabase } from "@/lib/supabase"
+import { useAuth } from "@furfield/auth-service"
 
 function SignInForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { signIn } = useAuth()
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [error, setError] = useState<string | null>(null)
@@ -19,15 +20,12 @@ function SignInForm() {
         setError(null)
         setLoading(true)
 
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        })
+        const result = await signIn(email, password)
 
         setLoading(false)
 
-        if (signInError) {
-            setError(signInError.message)
+        if (result.error) {
+            setError(result.error.message || 'Sign in failed')
             return
         }
 

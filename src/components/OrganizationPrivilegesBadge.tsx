@@ -1,6 +1,6 @@
 'use client'
 
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 
 export function OrganizationPrivilegesBadge() {
     const { privileges, privilegesLoading } = useUser()

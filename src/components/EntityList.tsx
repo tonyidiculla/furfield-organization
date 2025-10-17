@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 
 interface Entity {
     entity_id: string
@@ -25,7 +25,7 @@ interface Entity {
 }
 
 export function EntityList() {
-    const { user } = useUser()
+    const { user } = useAuth()
     const router = useRouter()
     const [entities, setEntities] = useState<Entity[]>([])
     const [loading, setLoading] = useState(true)
@@ -33,17 +33,63 @@ export function EntityList() {
 
     useEffect(() => {
         async function fetchEntities() {
-            if (!user?.id) {
-                setLoading(false)
-                return
+            // Try to get user from AuthProvider first, fallback to Supabase session if not available
+            let userId: string | undefined = user?.id
+            
+            if (!userId) {
+                // Fallback: Check if there's a session in Supabase directly
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session?.user) {
+                    userId = session.user.id
+                    console.log('[EntityList] Using session user from Supabase:', session.user.email)
+                } else {
+                    setLoading(false)
+                    return
+                }
             }
 
             try {
                 setLoading(true)
                 setError(null)
 
+                // First, get user's platform_id
+                const { data: profile, error: profileError } = await supabase
+                    .schema('master_data')
+                    .from('profiles')
+                    .select('user_platform_id')
+                    .eq('user_id', userId)
+                    .single()
+
+                if (profileError || !profile?.user_platform_id) {
+                    throw new Error('Could not find user profile')
+                }
+
+                const userPlatformId = profile.user_platform_id
+                console.log('[EntityList] User platform ID:', userPlatformId)
+
+                // Get user's organizations
+                const { data: organizations, error: orgError } = await supabase
+                    .schema('master_data')
+                    .from('organizations')
+                    .select('organization_platform_id')
+                    .eq('owner_platform_id', userPlatformId)
+                    .is('deleted_at', null)
+
+                if (orgError) {
+                    throw orgError
+                }
+
+                if (!organizations || organizations.length === 0) {
+                    console.log('[EntityList] No organizations found for user')
+                    setEntities([])
+                    return
+                }
+
+                const orgPlatformIds = organizations.map(org => org.organization_platform_id)
+                console.log('[EntityList] User owns', orgPlatformIds.length, 'organization(s)')
+
                 // Fetch entities with organization info
-                console.log('[EntityList] Fetching entities...')
+                console.log('[EntityList] Fetching entities for user organizations...')
                 const { data: entitiesData, error: entitiesError } = await supabase
                     .schema('master_data')
                     .from('global_organization_entity')
@@ -61,6 +107,7 @@ export function EntityList() {
                         is_active,
                         created_at
                     `)
+                    .in('organization_id', orgPlatformIds)
                     .is('deleted_at', null)
                     .order('created_at', { ascending: false })
 

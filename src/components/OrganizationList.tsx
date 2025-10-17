@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 import type { Organization } from '@/types/organization'
 
 export function OrganizationList() {
-    const { user } = useUser()
+    const { user } = useAuth()
     const router = useRouter()
     const [organizations, setOrganizations] = useState<Organization[]>([])
     const [loading, setLoading] = useState(true)
@@ -23,9 +23,19 @@ export function OrganizationList() {
 
     useEffect(() => {
         async function fetchOrganizations() {
-            if (!user?.id) {
-                setLoading(false)
-                return
+            // Try to get user from AuthProvider first, fallback to Supabase session if not available
+            let userId: string | undefined = user?.id
+            
+            if (!userId) {
+                // Fallback: Check if there's a session in Supabase directly
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session?.user) {
+                    userId = session.user.id
+                    console.log('[OrganizationList] Using session user from Supabase:', session.user.email)
+                } else {
+                    setLoading(false)
+                    return
+                }
             }
 
             // Prevent double fetching
@@ -42,7 +52,7 @@ export function OrganizationList() {
                     .schema('master_data')
                     .from('profiles')
                     .select('user_platform_id')
-                    .eq('user_id', user.id)
+                    .eq('user_id', userId)
                     .single()
 
                 if (profileError || !profile?.user_platform_id) {

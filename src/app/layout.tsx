@@ -1,8 +1,10 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { Suspense } from 'react'
 import { AppHeader } from '@/components/AppHeader'
-import { UserProvider } from '@/contexts/UserContext'
+import ClientProviders from './providers'
+import { SessionRestorer } from '@/components/session-restorer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,12 +21,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className} suppressHydrationWarning>
-        <UserProvider>
+        <ClientProviders>
+          <Suspense fallback={null}>
+            <SessionRestorer />
+          </Suspense>
           <div className="flex min-h-screen flex-col">
             <AppHeader />
             <main className="flex-1">{children}</main>
           </div>
-        </UserProvider>
+        </ClientProviders>
       </body>
     </html>
   )

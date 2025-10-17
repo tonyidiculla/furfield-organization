@@ -6,7 +6,7 @@
 
 import type { ReactNode } from 'react'
 
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 import type { PrivilegeLevel } from '@/lib/privileges'
 import {
     hasPrivilegeLevel,

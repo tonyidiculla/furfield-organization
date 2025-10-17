@@ -15,6 +15,7 @@ export function FurfieldLogo({ className, size = 52 }: FurfieldLogoProps) {
             width={size}
             height={size}
             className={classes}
+            style={{ width: 'auto', height: 'auto' }}
             priority
         />
     )

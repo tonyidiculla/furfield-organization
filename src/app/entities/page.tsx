@@ -1,9 +1,9 @@
 'use client'
 
-import { useUser } from '@/contexts/UserContext'
+import { useAuth } from '@furfield/auth-service'
 
 export default function EntityPage() {
-    const { user } = useUser()
+    const { user } = useAuth()
 
     return (
         <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-cyan-100 px-6 py-16 text-slate-700">

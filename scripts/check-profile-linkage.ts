@@ -18,6 +18,7 @@ async function checkProfileLinkage() {
     // Check if profiles table exists and what tony's profile looks like
     console.log('1️⃣ Checking profiles table...')
     const { data: profile, error: profileError } = await supabase
+        .schema('master_data')
         .from('profiles')
         .select('*')
         .eq('user_id', tonyUserId)
@@ -44,25 +45,8 @@ async function checkProfileLinkage() {
         return
     }
 
-    // Check platform_admin table
-    console.log('\n2️⃣ Checking platform_admin table...')
-    const { data: platformAdmin, error: adminError } = await supabase
-        .from('platform_admin')
-        .select('*')
-        .eq('id', profile.user_platform_id)
-        .single()
-
-    if (adminError) {
-        console.log('   ❌ Error:', adminError.message)
-        return
-    }
-
-    console.log('   ✅ Platform admin record found!')
-    console.log('   ID:', platformAdmin.id)
-    console.log('   Full record:', JSON.stringify(platformAdmin, null, 2))
-
     // Check user_to_role_assignment for this platform admin
-    console.log('\n3️⃣ Checking user_to_role_assignment...')
+    console.log('\n2️⃣ Checking user_to_role_assignment...')
     const { data: assignments, error: assignError } = await supabase
         .schema('master_data')
         .from('user_to_role_assignment')
@@ -70,7 +54,7 @@ async function checkProfileLinkage() {
             *,
             platform_roles (*)
         `)
-        .eq('user_id', platformAdmin.id)
+        .eq('user_platform_id', profile.user_platform_id)
         .eq('is_active', true)
 
     if (assignError) {
@@ -79,10 +63,10 @@ async function checkProfileLinkage() {
     }
 
     if (!assignments || assignments.length === 0) {
-        console.log('   ⚠️  No role assignments for this platform_admin ID')
+    console.log('   ⚠️  No role assignments for this user_platform_id')
         console.log(`\n   To assign a role, run:`)
-        console.log(`   INSERT INTO master_data.user_to_role_assignment (user_id, platform_role_id, is_active)`)
-        console.log(`   VALUES ('${platformAdmin.id}',`)
+    console.log(`   INSERT INTO master_data.user_to_role_assignment (user_platform_id, platform_role_id, is_active)`)
+    console.log(`   VALUES ('${profile.user_platform_id}',`)
         console.log(`           (SELECT id FROM master_data.platform_roles WHERE role_name = 'platform_admin' LIMIT 1),`)
         console.log(`           true);`)
         return
@@ -101,8 +85,7 @@ async function checkProfileLinkage() {
     console.log(`   auth.users (${tonyUserId})`)
     console.log(`   → profiles.user_id`)
     console.log(`   → profiles.user_platform_id (${profile.user_platform_id})`)
-    console.log(`   → platform_admin.id`)
-    console.log(`   → user_to_role_assignment.user_id`)
+    console.log(`   → master_data.user_to_role_assignment.user_platform_id`)
     console.log(`   → platform_roles`)
 }
 
